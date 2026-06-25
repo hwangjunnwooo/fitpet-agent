@@ -205,7 +205,7 @@ with tab3:
 # --- 탭 4: 🛍️ 펫샵 (Pet Shop) ---
 with tab4:
     st.header("🛍️ 피트펫 상점")
-    shop_items = {"🕶️ 힙스터 선글라스": 100, "👑 명품 골드 왕관": 200, "🤖 하이닉스 반도체 슈트": 300}
+    shop_items = {"🕶️ 힙스터 선글라스": 100, "👑 명품 골드 왕관": 200, "🤖 하이닉스 유니폼": 300}
     col1, col2, col3 = st.columns(3)
     cols = [col1, col2, col3]
     for idx, (item_name, price) in enumerate(shop_items.items()):
