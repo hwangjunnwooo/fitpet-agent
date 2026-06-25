@@ -65,7 +65,7 @@ if st.session_state.equipped == "🕶️ 힙스터 선글라스":
     image_file = "cat_sunglasses.png"
 elif st.session_state.equipped == "👑 명품 골드 왕관":
     image_file = "cat_crown.png"
-elif st.session_state.equipped == "🤖 하이닉스 반도체 슈트":
+elif st.session_state.equipped == "🤖 하이닉스 유니폼":
     image_file = "cat_suit.png"
 
 if os.path.exists(image_file):
@@ -257,7 +257,7 @@ with tab4:
 # --- 탭 5: 🛍️ 펫샵 (Pet Shop) ---
 with tab5:
     st.header("🛍️ 피트펫 상점")
-    shop_items = {"🕶️ 힙스터 선글라스": 100, "👑 명품 골드 왕관": 200, "🤖 하이닉스 반도체 슈트": 300}
+    shop_items = {"🕶️ 힙스터 선글라스": 100, "👑 명품 골드 왕관": 200, "🤖 하이닉스 유니폼": 300}
     col1, col2, col3 = st.columns(3)
     cols = [col1, col2, col3]
     for idx, (item_name, price) in enumerate(shop_items.items()):
