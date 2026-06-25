@@ -54,7 +54,7 @@ if st.session_state.equipped == "🕶️ 힙스터 선글라스":
     image_file = "cat_sunglasses.png"
 elif st.session_state.equipped == "👑 명품 골드 왕관":
     image_file = "cat_crown.png"
-elif st.session_state.equipped == "🤖 하이닉스 반도체 슈트":
+elif st.session_state.equipped == "🤖 하이닉스 유니폼":
     image_file = "cat_suit.png"
 
 # [버그 수정] 중복 코드를 제거하고, try-except 방어막이 쳐진 단 하나의 안전한 로직만 남겨둠
