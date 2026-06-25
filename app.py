@@ -2,23 +2,23 @@ import streamlit as st
 import google.generativeai as genai
 from PIL import Image
 import datetime
+import os
 
 # 1. 페이지 기본 설정 및 디자인
-st.set_page_config(page_title="피트펫 (FitPet) 3D", page_icon="🐾", layout="centered")
+st.set_page_config(page_title="피트펫 (FitPet) 2D", page_icon="🐾", layout="centered")
 
-st.title("🐾 피트펫 (FitPet) 3D & 펫샵")
-st.caption("올인원 헬스케어 에이전트 + 3D 펫 키우기 (SK하이닉스 신입사원 과제)")
+st.title("🐾 피트펫 (FitPet) 2D & 펫샵")
+st.caption("올인원 헬스케어 에이전트 + 2D 펫 키우기 (SK하이닉스 신입사원 과제)")
 st.markdown("---")
 
 # 2. 세션 상태(데이터 저장용) 초기화
 if "points" not in st.session_state:
-    st.session_state.points = 100  # 테스트를 위해 기본 100p 지급
+    st.session_state.points = 100  # 초기 테스트용 100p 지급
 if "inventory" not in st.session_state:
     st.session_state.inventory = ["기본 스킨"]
 if "equipped" not in st.session_state:
     st.session_state.equipped = "기본 스킨"
 if "calendar_meals" not in st.session_state:
-    # 캘린더 식단 예시 데이터 초기화
     st.session_state.calendar_meals = {
         str(datetime.date.today()): {"plan": "닭가슴살 샐러드 & 현미밥", "checked": False}
     }
@@ -29,48 +29,31 @@ try:
 except Exception as e:
     st.warning("API Key가 설정되지 않았습니다. Secrets 설정을 확인해 주세요.")
 
-# 3. 사이드바 - 3D 고양이 캐릭터 및 상태창
-st.sidebar.header("🐱 마이 3D 펫 룸")
+# 3. 사이드바 - 2D 고양이 캐릭터 매칭 및 상태창
+st.sidebar.header("🐱 마이 펫 룸")
 st.sidebar.subheader(f"💰 보유 포인트: {st.session_state.points} p")
 
-# CSS 3D 큐브/입체 효과를 활용한 3D 고양이 캐릭터 구현
-# 장착한 아이템에 따라 고양이의 색상이나 장식이 바뀜
-cat_color = "#FFB347"  # 기본 치즈냥이 색상
-cat_accessory = ""
+# 장착한 아이템에 따라 보여줄 이미지 매칭
+image_file = "cat_base.png"  # 기본값
 
-if st.session_state.equipped == "🤖 하이닉스 반도체 슈트":
-    cat_color = "#00BFFF"
-    cat_accessory = "⚡ HBM POWER"
+if st.session_state.equipped == "🕶️ 힙스터 선글라스":
+    image_file = "cat_sunglasses.png"
 elif st.session_state.equipped == "👑 명품 골드 왕관":
-    cat_accessory = "👑 GOLD CROWN"
-elif st.session_state.equipped == "🕶️ 힙스터 선글라스":
-    cat_accessory = "🕶️ COOL CAT"
+    image_file = "cat_crown.png"
+elif st.session_state.equipped == "🤖 하이닉스 반도체 슈트":
+    image_file = "cat_suit.png"
 
-# 3D 애니메이션 고양이 HTML 렌더링
-st.sidebar.markdown(f"""
-<div style="perspective: 400px; width: 100%; text-align: center; padding: 20px 0;">
-    <div style="width: 100px; height: 100px; background: {cat_color}; margin: 0 auto; transform: rotateX(20deg) rotateY(20deg); transform-style: preserve-3d; animation: spin 4s linear infinite; border-radius: 20px; position: relative; box-shadow: 5px 5px 15px rgba(0,0,0,0.2);">
-        <div style="position: absolute; top: -15px; left: 10px; width: 0; height: 0; border-left: 15px solid transparent; border-right: 15px solid transparent; border-bottom: 20px solid {cat_color};"></div>
-        <div style="position: absolute; top: -15px; right: 10px; width: 0; height: 0; border-left: 15px solid transparent; border-right: 15px solid transparent; border-bottom: 20px solid {cat_color};"></div>
-        <div style="position: absolute; top: 35px; left: 20px; font-size: 16px;">👀</div>
-        <div style="position: absolute; top: 55px; left: 42px; font-size: 12px;">👃</div>
-        <div style="position: absolute; bottom: -30px; left: 0; width: 100%; text-align: center; color: #333; font-weight: bold; font-size: 12px;">
-            {cat_accessory if cat_accessory else "🐱 알몸 상태"}
-        </div>
-    </div>
-</div>
-<style>
-@keyframes spin {{
-    0% {{ transform: rotateX(15deg) rotateY(-20deg); }}
-    50% {{ transform: rotateX(25deg) rotateY(20deg); }}
-    100% {{ transform: rotateX(15deg) rotateY(-20deg); }}
-}}
-</style>
-""", unsafe_allow_html=True)
+# GitHub에 이미지가 업로드되었는지 확인 후 화면에 띄우기
+if os.path.exists(image_file):
+    st.sidebar.image(image_file, caption=f"현재 상태: {st.session_state.equipped}", use_container_width=True)
+else:
+    # 깃허브에 아직 파일이 올라가지 않았을 때를 대비한 예외 안내 박스
+    st.sidebar.warning(f"⚠️ 저장소에 '{image_file}' 파일이 필요합니다.")
+    st.sidebar.info("💡 준비하신 고양이 이미지 파일들을 app.py와 같은 위치에 업로드해 주세요!")
 
-st.sidebar.markdown(f"**현재 장착:** {st.session_state.equipped}")
+st.sidebar.markdown(f"**현재 장착 아이템:** {st.session_state.equipped}")
 
-# 4. 메인 기능 탭 구성 (캘린더 및 펫샵 추가)
+# 4. 메인 기능 탭 구성
 tab1, tab2, tab3, tab4, tab5 = st.tabs([
     "📅 식단 캘린더 & 분석", 
     "🥦 실시간 식단 입력", 
@@ -84,7 +67,6 @@ with tab1:
     st.header("📅 스마트 식단 캘린더")
     st.write("기관 식단표 이미지나 주간 식단표 계획을 올리면 AI가 분석하여 해당 날짜 캘린더에 자동으로 입력해 줍니다.")
     
-    # 식단표 자동 파싱 기능
     menu_file = st.file_uploader("📋 주간/월간 식단표 이미지 업로드", type=["jpg", "jpeg", "png"])
     if st.button("식단표 분석 후 캘린더 자동 등록"):
         if menu_file:
@@ -95,7 +77,6 @@ with tab1:
                     img = Image.open(menu_file)
                     response = model.generate_content([prompt, img])
                     
-                    # 샘플 분석 결과를 캘린더 세션에 반영 (데모 구현)
                     today_str = str(datetime.date.today())
                     st.session_state.calendar_meals[today_str] = {"plan": "AI가 추출한 건강 균형 식단", "checked": False}
                     st.success("성공적으로 식단표를 분석하여 캘린더에 일정을 등록했습니다!")
@@ -113,7 +94,6 @@ with tab1:
         meal_info = st.session_state.calendar_meals[date_key]
         st.info(f"📋 **{date_key} 계획된 식단:** {meal_info['plan']}")
         
-        # 실제 먹었는지 스위치로 체크
         is_eaten = st.checkbox("🍽️ 오늘 이 식단을 실제로 섭취하셨나요?", value=meal_info['checked'])
         st.session_state.calendar_meals[date_key]["checked"] = is_eaten
         
@@ -125,7 +105,7 @@ with tab1:
             else:
                 st.success("식단 실천 상태가 업데이트되었습니다.")
     else:
-        st.warning("해당 날짜에 등록된 식단 계획이 없습니다. 아래 직접 등록해 보세요.")
+        st.warning("해당 날짜에 등록된 식단 계획이 없습니다.")
         new_plan = st.text_input("새로운 식단 계획 입력")
         if st.button("식단 계획 추가"):
             st.session_state.calendar_meals[date_key] = {"plan": new_plan, "checked": False}
@@ -158,7 +138,7 @@ with tab2:
 # --- 탭 3: 운동 관리 ---
 with tab3:
     st.header("⚡ 웨어러블 연동 운동 학습")
-    workout_input = st.text_area("오늘 어떤 운동을 주로 하셨나요?", placeholder="예: 오늘 런닝구간 5km 뛰었어.")
+    workout_input = st.text_area("오늘 어떤 운동을 주로 하셨나요?", placeholder="예: 오늘 퇴근하고 헬스장에서 유산소 30분 탔어.")
     if st.button("운동 일지 등록 (+100p)"):
         if workout_input:
             with st.spinner("운동 패턴 분석 중..."):
@@ -194,9 +174,8 @@ with tab4:
 # --- 탭 5: 🛍️ 펫샵 (Pet Shop) ---
 with tab5:
     st.header("🛍️ 피트펫 상점")
-    st.write("열심히 운동하고 식단 관리를 해서 모은 포인트로 3D 고양이의 아이템을 구매해 보세요!")
+    st.write("열심히 운동하고 식단 관리를 해서 모은 포인트로 귀여운 고양이의 아이템을 구매해 보세요!")
     
-    # 상점 아이템 리스트 (아이템명, 가격)
     shop_items = {
         "🕶️ 힙스터 선글라스": 100,
         "👑 명품 골드 왕관": 200,
@@ -212,7 +191,6 @@ with tab5:
             st.write(f"💰 가격: {price} p")
             
             if item_name in st.session_state.inventory:
-                # 이미 보유한 경우 장착 기능 제공
                 if st.session_state.equipped == item_name:
                     st.button("🟢 장착 중", key=f"eq_{idx}", disabled=True)
                 else:
@@ -220,7 +198,6 @@ with tab5:
                         st.session_state.equipped = item_name
                         st.rerun()
             else:
-                # 미보유 시 구매 기능 제공
                 if st.button("🛒 구매하기", key=f"buy_{idx}"):
                     if st.session_state.points >= price:
                         st.session_state.points -= price
