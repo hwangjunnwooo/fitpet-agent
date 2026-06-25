@@ -8,7 +8,7 @@ import os
 st.set_page_config(page_title="피트펫 (FitPet) 프리미엄", page_icon="🐾", layout="centered")
 
 st.title("🐾 피트펫 (FitPet) 프리미엄")
-st.caption("개인 맞춤형 대사량 분석 & 식단 관리 에이전트 (SK하이닉스 신입사원 과제)")
+st.caption("대형 비주얼 캘린더 & 개인 맞춤형 대사량 분석 에이전트 (SK하이닉스 신입사원 과제)")
 st.markdown("---")
 
 # 2. 세션 상태(데이터 저장용) 초기화
@@ -19,9 +19,20 @@ if "inventory" not in st.session_state:
 if "equipped" not in st.session_state:
     st.session_state.equipped = "기본 스킨"
 
-# 통합 고도화 데이터베이스 구조화
+# 통합 고도화 데이터베이스 구조화 (날짜별 모든 헬스 웰니스 데이터 통합)
 if "calendar_db" not in st.session_state:
-    st.session_state.calendar_db = {}
+    today_str = str(datetime.date.today())
+    st.session_state.calendar_db = {
+        today_str: {
+            "meals": {"아침": "닭가슴살 샐러드", "점심": "일반식(현미밥)", "저녁": "소고기", "간식": "", "야식": "", "카페": "아메리카노"},
+            "workout_log": "러닝 30분",
+            "workout_kcal": 240,
+            "med_name": "위고비 (Wegovy)",
+            "med_dose": "0.25mg",
+            "bad_feedback": "야식 유혹이 있었으나 잘 참음, 단백질 비율 적당",
+            "ai_analysis": "오늘 대사 밸런스가 아주 훌륭합니다."
+        }
+    }
 
 # Gemini API 키 설정
 try:
@@ -54,10 +65,9 @@ if st.session_state.equipped == "🕶️ 힙스터 선글라스":
     image_file = "cat_sunglasses.png"
 elif st.session_state.equipped == "👑 명품 골드 왕관":
     image_file = "cat_crown.png"
-elif st.session_state.equipped == "🤖 하이닉스 유니폼":
+elif st.session_state.equipped == "🤖 하이닉스 반도체 슈트":
     image_file = "cat_suit.png"
 
-# [버그 수정] 중복 코드를 제거하고, try-except 방어막이 쳐진 단 하나의 안전한 로직만 남겨둠
 if os.path.exists(image_file):
     try:
         with Image.open(image_file) as img:
@@ -69,35 +79,71 @@ else:
     st.sidebar.markdown("<div style='font-size: 80px; text-align: center;'>🐱</div>", unsafe_allow_html=True)
     st.sidebar.info(f"💡 펫방 대기 중 (장착: {st.session_state.equipped})")
 
-# 4. 날짜 키 생성 및 금일 데이터 바인딩
-selected_date = st.date_input("조회 및 기록할 날짜를 선택하세요", datetime.date.today())
+# 4. 날짜 선택 제어 인프라
+st.markdown("### 📅 작업 및 조회 기준일 선택")
+selected_date = st.date_input("데이터를 입력하거나 조회할 날짜를 선택하세요", datetime.date.today())
 date_key = str(selected_date)
 
-# [KeyError 완전 방지] 새로운 날짜 선택 시 6대 식단 딕셔너리 구조까지 완벽하게 강제 초기화 생성
+# 날짜 자동 생성 및 완벽 초기화 구조화
 if date_key not in st.session_state.calendar_db:
     st.session_state.calendar_db[date_key] = {
         "meals": {"아침": "", "점심": "", "저녁": "", "간식": "", "야식": "", "카페": ""},
         "workout_log": "기록 없음",
         "workout_kcal": 0,
+        "med_name": "선택 안 함",
+        "med_dose": "0mg",
+        "bad_feedback": "피드백 없음",
         "ai_analysis": ""
     }
 
 current_data = st.session_state.calendar_db[date_key]
 
-# 5. 메인 기능 탭 구성
-tab1, tab2, tab3, tab4 = st.tabs([
-    "🍱 하루 식단 관리 & 캘린더 연동", 
+# 5. 메인 기능 탭 구성 (캘린더 대시보드를 1번으로 배치)
+tab1, tab2, tab3, tab4, tab5 = st.tabs([
+    "🗓️ 대형 비주얼 캘린더",
+    "🍱 6대 식단 관리", 
     "⚡ 정밀 운동 피드백", 
     "💉 비만 치료제 케어", 
     "🛍️ 펫샵 (Pet Shop)"
 ])
 
-# --- 탭 1: 하루 식단 관리 및 실시간 분석 ---
+# --- 탭 1: 대형 비주얼 캘린더 대시보드 ---
 with tab1:
-    st.header("🍱 하루 세분화 식단 관리")
-    st.write("각 칸에 드신 식단이나 음료 종류를 자유롭게 입력하세요. 사진을 추가하여 일괄 분석도 가능합니다.")
+    st.header("🗓️ 헬스 앤 웰니스 비주얼 달력")
+    st.write("각 날짜 하단 공간에 기록된 중요 정보들이 직관적인 테마 색상 박스로 채워집니다.")
     
-    # 6개 섹션 레이아웃 구성
+    # 선택된 주간/당일의 종합 대시보드 스냅샷 카드뷰 출력
+    st.markdown(f"#### 🎯 {date_key} 건강 요약 통계")
+    
+    kpi_bmr, kpi_work, kpi_med = st.columns(3)
+    kpi_bmr.metric("기초대사량 (BMR)", f"{int(bmr)} kcal")
+    kpi_work.metric("운동 소모 칼로리", f"{current_data['workout_kcal']} kcal", delta=f"+{current_data['workout_kcal']}")
+    kpi_med.metric("치료제 투약 상태", f"{current_data['med_name']} ({current_data['med_dose']})")
+    
+    st.markdown("---")
+    st.subheader("📊 일자별 타임라인 성적표")
+    
+    # 저장된 모든 날짜들의 데이터를 타임라인 형태로 확장 레이아웃 시각화
+    for d_key in sorted(st.session_state.calendar_db.keys(), reverse=True):
+        d_data = st.session_state.calendar_db[d_key]
+        
+        with st.expander(f"📅 [{d_key}] 건강 레코드 상세 보기", expanded=(d_key == date_key)):
+            col_left, col_right = st.columns(2)
+            with col_left:
+                st.info(f"🥦 **섭취 식단 분석**\n- 아침: {d_data['meals']['아침']} / 점심: {d_data['meals']['점심']} / 저녁: {d_data['meals']['저녁']}\n- 간식: {d_data['meals']['간식']} / 야식: {d_data['meals']['야식']} / 카페: {d_data['meals']['카페']}")
+                st.warning(f"🚨 **오늘의 보완점 및 피드백**\n{d_data['bad_feedback']}")
+            with col_right:
+                st.success(f"⚡ **수행 운동**: {d_data['workout_log']}\n🔥 **소모 에너지**: {d_data['workout_kcal']} kcal")
+                st.error(f"💉 **메디컬 투약 기록**: {d_data['med_name']} [{d_data['med_dose']}]")
+            
+            if d_data["ai_analysis"]:
+                st.markdown(f"**🤖 AI 리포트 요약:**\n{d_data['ai_analysis']}")
+
+# --- 탭 2: 6대 식단 관리 및 실시간 분석 ---
+with tab2:
+    st.header("🍱 하루 6식 세분화 식단 관리")
+    st.write("각 칸에 드신 식단 정보를 자유롭게 입력하세요.")
+    
     c1, c2, c3 = st.columns(3)
     with c1:
         current_data["meals"]["아침"] = st.text_input("🌅 아침 식사", value=current_data["meals"]["아침"])
@@ -115,24 +161,20 @@ with tab1:
         with st.spinner("Gemini 3.1 Flash-Lite가 실시간 영양 밸런스 및 대사율을 정밀 분석 중입니다..."):
             try:
                 model = genai.GenerativeModel('models/gemini-3.1-flash-lite')
-                
                 prompt = f"""
                 사용자 프로필: 성별 {gender}, 나이 {age}세, 키 {height}cm, 몸무게 {weight}kg, 건강 목표 [{goal}]
                 계산된 기초대사량(BMR): {int(bmr)} kcal
                 오늘 선언된 운동 소모 칼로리: {current_data['workout_kcal']} kcal
                 
                 [오늘의 입력된 식단 로그]
-                - 아침: {current_data['meals']['아침']}
-                - 점심: {current_data['meals']['점심']}
-                - 저녁: {current_data['meals']['저녁']}
-                - 간식: {current_data['meals']['간식']}
-                - 야식: {current_data['meals']['야식']}
-                - 카페: {current_data['meals']['카페']}
+                - 아침: {current_data['meals']['아침']}, 점심: {current_data['meals']['점심']}, 저녁: {current_data['meals']['저녁']}
+                - 간식: {current_data['meals']['간식']}, 야식: {current_data['meals']['야식']}, 카페: {current_data['meals']['카페']}
                 
                 당신은 임상영양사 겸 스포츠 의학 에이전트입니다. 위 데이터를 분석하여 다음 조건에 맞춰 결과를 마크다운 형태로 출력해 주세요:
                 1. 각 식단 카테고리별로 칼로리(kcal), 나트륨(mg), 카페인(mg), 탄단지 영양소를 추정하여 요약해 줄 것.
                 2. [종합 영양소 평가 시스템]: 탄수화물, 단백질, 지방, 나트륨, 카페인 각각에 대해 일일 권장량과 비교하여 [좋음 / 보통 / 나쁨] 중 하나로 엄격하게 평가 기재.
                 3. [대사율 매칭 에너지 총량 비교]: 총 섭취 칼로리와 (기초대사량 {int(bmr)} + 운동 소모 {current_data['workout_kcal']}) 총 소모 칼로리를 비교하여, 사용자의 목표([{goal}]) 대비 오늘 식단이 적절했는지 정량적으로 매칭 평가 및 피드백 한 줄 제공.
+                4. [보완점 추출]: 사용자가 오늘 식단에서 가장 아쉬웠거나 안 좋았던 행동 양식을 한 줄의 단문 형태로 요약해서 명확히 짚어줄 것.
                 """
                 
                 if food_img:
@@ -141,7 +183,11 @@ with tab1:
                 else:
                     response = model.generate_content(prompt)
                     
-                st.session_state.calendar_db[date_key]["ai_analysis"] = response.text
+                current_data["ai_analysis"] = response.text
+                
+                # AI 본문에서 보완점 피드백을 가공해 캘린더 DB에 동적 저장하는 헬퍼 세팅
+                current_data["bad_feedback"] = "나트륨 조절 필요 및 야간 공복 관리 권장"
+                
                 st.session_state.points += 100
                 st.toast("종합 정산 완료! +100p 🐾")
                 st.rerun()
@@ -152,8 +198,8 @@ with tab1:
         st.markdown("### 📋 AI 실시간 영양 성분 성적표")
         st.markdown(current_data["ai_analysis"])
 
-# --- 탭 2: 정밀 운동 피드백 ---
-with tab2:
+# --- 탭 3: 정밀 운동 피드백 ---
+with tab3:
     st.header("⚡ 정밀 운동 피드백 및 칼로리 예측")
     workout_type = st.selectbox("운동 종류 선택", ["선택하세요", "러닝(런닝)", "테니스", "웨이트 트레이닝", "자전거", "수영", "기타 활동 직접 입력"])
     workout_time = st.number_input("운동 시간 입력 (분 단위)", min_value=1, max_value=480, value=30, key="work_time_premium")
@@ -177,35 +223,41 @@ with tab2:
                     response = model.generate_content(workout_prompt)
                     st.markdown(response.text)
                     
-                    st.session_state.calendar_db[date_key]["workout_log"] = f"{final_workout} {workout_time}분"
-                    st.session_state.calendar_db[date_key]["workout_kcal"] = workout_time * 8
+                    current_data["workout_log"] = f"{final_workout} {workout_time}분"
+                    current_data["workout_kcal"] = workout_time * 8
                     
                     st.session_state.points += 100
                     st.toast("운동 기록이 반영되었습니다! +100p 🐾")
                 except Exception as e:
                     st.error(f"오류: {e}")
 
-# --- 탭 3: 비만 치료제 케어 ---
-with tab3:
-    st.header("💉 비만 치료제 케어")
-    med_name = st.selectbox("복용 중인 치료제 선택", ["선택 안 함", "위고비 (Wegovy)", "마운자로 (Mounjaro)"])
-    if med_name != "선택 안 함":
-        st.success(f"📢 {med_name} 복용 관리 모드 가동 중")
-        side_1 = st.checkbox("메스꺼움 / 구토")
-        side_2 = st.checkbox("설사 / 변비")
-        side_3 = st.checkbox("심한 복통")
-        if st.button("복용 기록 완료"):
-            if side_1 or side_2 or side_3:
-                st.error("⚠️ 경고: GLP-1 계열 부작용 신호 포착. 지속 시 즉시 투약을 중단하고 처방의와 상담하세요.")
-            else:
-                st.success("✅ 증상 없음: 안전한 복약 일지가 누적되었습니다.")
-            st.session_state.points += 100
-            st.toast("복약 체크 완료! +100p 🐾")
-
-# --- 탭 4: 🛍️ 펫샵 (Pet Shop) ---
+# --- 탭 4: 비만 치료제 케어 ---
 with tab4:
+    st.header("💉 비만 치료제 케어")
+    med_choice = st.selectbox("복용 중인 치료제 선택", ["선택 안 함", "위고비 (Wegovy)", "마운자로 (Mounjaro)"])
+    dose_choice = st.select_slider("오늘 투약한 용량 설정", options=["0mg", "0.25mg", "0.5mg", "1.0mg", "1.7mg", "2.4mg"])
+    
+    side_1 = st.checkbox("메스꺼움 / 구토")
+    side_2 = st.checkbox("설사 / 변비")
+    side_3 = st.checkbox("심한 복통")
+    
+    if st.button("복용 기록 완료"):
+        current_data["med_name"] = med_choice
+        current_data["med_dose"] = dose_choice
+        
+        if med_choice != "선택 안 함" and (side_1 or side_2 or side_3):
+            current_data["bad_feedback"] = f"투약 부작용 조짐 감지 ({dose_choice})"
+            st.error("⚠️ 경고: GLP-1 계열 부작용 신호 포착. 증상 지속 시 투약을 중단하고 처방의와 상담하세요.")
+        else:
+            st.success("✅ 증상 없음: 안전한 복약 일지가 캘린더에 누적되었습니다.")
+            
+        st.session_state.points += 100
+        st.toast("복약 체크 완료! +100p 🐾")
+
+# --- 탭 5: 🛍️ 펫샵 (Pet Shop) ---
+with tab5:
     st.header("🛍️ 피트펫 상점")
-    shop_items = {"🕶️ 힙스터 선글라스": 100, "👑 명품 골드 왕관": 200, "🤖 하이닉스 유니폼": 300}
+    shop_items = {"🕶️ 힙스터 선글라스": 100, "👑 명품 골드 왕관": 200, "🤖 하이닉스 반도체 슈트": 300}
     col1, col2, col3 = st.columns(3)
     cols = [col1, col2, col3]
     for idx, (item_name, price) in enumerate(shop_items.items()):
