@@ -49,6 +49,7 @@ st.sidebar.markdown("---")
 st.sidebar.header("🐱 마이 펫 룸")
 st.sidebar.subheader(f"💰 보유 포인트: {st.session_state.points} p")
 
+# --- 기존 이미지 로드 부분을 아래 코드로 안전하게 교체 ---
 image_file = "cat_base.png"
 if st.session_state.equipped == "🕶️ 힙스터 선글라스":
     image_file = "cat_sunglasses.png"
@@ -56,6 +57,20 @@ elif st.session_state.equipped == "👑 명품 골드 왕관":
     image_file = "cat_crown.png"
 elif st.session_state.equipped == "🤖 하이닉스 반도체 슈트":
     image_file = "cat_suit.png"
+
+# 안전한 이미지 로드 프로세스 (try-except 예외 처리 추가)
+if os.path.exists(image_file):
+    try:
+        # 이미지를 PIL로 먼저 정상적으로 열 수 있는지 검증
+        with Image.open(image_file) as img:
+            st.sidebar.image(img, caption=f"현재 상태: {st.session_state.equipped}", use_container_width=True)
+    except Exception as img_err:
+        # 파일이 손상되었을 경우 에러로 앱이 죽지 않고 이모지로 대체
+        st.sidebar.markdown(f"<div style='font-size: 80px; text-align: center;'>🐱</div>", unsafe_allow_html=True)
+        st.sidebar.warning(f"⚠️ '{image_file}' 파일 구조가 손상되어 이모지로 대체합니다.")
+else:
+    st.sidebar.markdown("<div style='font-size: 80px; text-align: center;'>🐱</div>", unsafe_allow_html=True)
+    st.sidebar.info(f"💡 펫방 대기 중 (장착: {st.session_state.equipped})")
 
 if os.path.exists(image_file):
     st.sidebar.image(image_file, caption=f"현재 상태: {st.session_state.equipped}", use_container_width=True)
