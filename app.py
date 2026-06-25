@@ -16,14 +16,11 @@ if "points" not in st.session_state:
 if "history" not in st.session_state:
     st.session_state.history = []
 
-# Gemini API 키 설정 (Streamlit Secrets 연동용 예시)
-# 테스트 시에는 아래 주석을 풀고 본인의 Gemini API 키를 직접 넣으셔도 됩니다.
-# genai.configure(api_key="YOUR_GEMINI_API_KEY")
-
+# Gemini API 키 설정 (Streamlit Secrets 연동)
 try:
     genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
-except:
-    pass
+except Exception as e:
+    st.warning("API Key가 Secrets에 설정되지 않았거나 올바르지 않습니다. 우측 하단 Manage app -> Settings -> Secrets를 확인해 주세요.")
 
 # 3. 사이드바 - 마이 펫 대시보드 (보상 시스템)
 st.sidebar.header("🐱 마이 펫 성장 일지")
@@ -51,19 +48,22 @@ with tab1:
     if st.button("식단 분석 및 포인트 받기"):
         if food_img or food_text:
             with st.spinner("Gemini AI가 식단을 분석 중입니다..."):
-                # Gemini 모델 로드 (Vision 기능 지원)
-                model = genai.GenerativeModel('gemini-1.5-flash')
-                prompt = "당신은 영양사 에이전트입니다. 제공된 이미지 또는 텍스트를 보고 해당 식단의 추정 칼로리(kcal)와 탄수화물, 단백질, 지방 비율을 표 형태로 명확히 알려주고 다정한 피드백을 한 줄 남겨주세요."
-                
-                if food_img:
-                    img = Image.open(food_img)
-                    response = model.generate_content([prompt, img])
-                else:
-                    response = model.generate_content([prompt, food_text])
-                
-                st.markdown(response.text)
-                st.session_state.points += 100
-                st.rerun()
+                try:
+                    # 최신 모델 'models/gemini-3.1-flash-lite'로 지정
+                    model = genai.GenerativeModel('models/gemini-3.1-flash-lite')
+                    prompt = "당신은 영양사 에이전트입니다. 제공된 이미지 또는 텍스트를 보고 해당 식단의 추정 칼로리(kcal)와 탄수화물, 단백질, 지방 비율을 표 형태로 명확히 알려주고 다정한 피드백을 한 줄 남겨주세요."
+                    
+                    if food_img:
+                        img = Image.open(food_img)
+                        response = model.generate_content([prompt, img])
+                    else:
+                        response = model.generate_content([prompt, food_text])
+                    
+                    st.markdown(response.text)
+                    st.session_state.points += 100
+                    st.toast("식단 기록 완료! +100p 🐾")
+                except Exception as e:
+                    st.error(f"오류가 발생했습니다: {e}")
         else:
             st.warning("사진을 업로드하거나 텍스트를 입력해 주세요.")
 
@@ -77,12 +77,19 @@ with tab2:
     
     if st.button("운동 일지 등록 (+100p)"):
         if workout_input:
-            model = genai.GenerativeModel('gemini-1.5-flash')
-            workout_prompt = f"사용자의 운동 기록: '{workout_input}'. 이 패턴을 기반으로 칭찬과 함께 다음 운동 시 주의점이나 팁을 하이닉스 신입사원 트레이너 컨셉으로 다정하게 말해줘."
-            response = model.generate_content(workout_prompt)
-            st.info(response.text)
-            st.session_state.points += 100
-            st.rerun()
+            with st.spinner("운동 패턴 분석 중..."):
+                try:
+                    # 최신 모델 'models/gemini-3.1-flash-lite'로 지정
+                    model = genai.GenerativeModel('models/gemini-3.1-flash-lite')
+                    workout_prompt = f"사용자의 운동 기록: '{workout_input}'. 이 패턴을 기반으로 칭찬과 함께 다음 운동 시 주의점이나 팁을 하이닉스 신입사원 트레이너 컨셉으로 다정하게 말해줘."
+                    response = model.generate_content(workout_prompt)
+                    st.info(response.text)
+                    st.session_state.points += 100
+                    st.toast("운동 기록 완료! +100p 🐾")
+                except Exception as e:
+                    st.error(f"오류가 발생했습니다: {e}")
+        else:
+            st.warning("운동 내용을 입력해 주세요.")
 
 # --- 탭 3: 비만 치료제 케어 ---
 with tab3:
@@ -105,4 +112,4 @@ with tab3:
             else:
                 st.success("✅ 이상 없음: 안전하게 복용이 기록되었습니다. 건강한 다이어트를 응원합니다!")
             st.session_state.points += 100
-            st.rerun()
+            st.toast("복약 및 부작용 체크 완료! +100p 🐾")
