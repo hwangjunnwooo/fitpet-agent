@@ -74,11 +74,11 @@ elif st.session_state.equipped == "🤖 하이닉스 유니폼 (고양이)":
     image_file = "cat_suit.png"; emoji_avatar = "🤖🐱"
 elif st.session_state.equipped == "기본 강아지":
     image_file = "dog_base.png"; emoji_avatar = "🐶"
-elif st.session_state.equipped == "🕶️ 힙스터 바둑이":
+elif st.session_state.equipped == "🕶️ 힙스터 강아지":
     image_file = "dog_sunglasses.png"; emoji_avatar = "🕶️🐶"
-elif st.session_state.equipped == "👑 왕관 푸들":
+elif st.session_state.equipped == "👑 왕관 강아지":
     image_file = "dog_crown.png"; emoji_avatar = "👑🐶"
-elif st.session_state.equipped == "🤖 하이닉스 시바견":
+elif st.session_state.equipped == "🤖 하이닉스 강아지":
     image_file = "dog_suit.png"; emoji_avatar = "🤖🐶"
 
 if os.path.exists(image_file):
@@ -249,9 +249,9 @@ with tab5:
     else:
         dog_items = {
             "기본 강아지": 100,  # 기본 강아지 분양가 100p 세팅 완료!
-            "🕶️ 힙스터 바둑이": 150,
-            "👑 왕관 푸들": 220,
-            "🤖 하이닉스 시바견": 320
+            "🕶️ 힙스터 강아지": 150,
+            "👑 왕관 강아지": 220,
+            "🤖 하이닉스 강아지": 320
         }
         items_to_display = dog_items
         
