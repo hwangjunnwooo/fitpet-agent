@@ -29,7 +29,7 @@ try:
 except Exception as e:
     st.warning("API Key가 설정되지 않았습니다. Secrets 설정을 확인해 주세요.")
 
-# 3. 사이드바 - [신규] 개인 신체 정보 입력 및 기초대사량(BMR) 계산
+# 3. 사이드바 - 개인 신체 정보 입력 및 기초대사량(BMR) 계산
 st.sidebar.header("👤 개인 신체 프로필 입력")
 gender = st.sidebar.radio("성별", ["남성", "여성"])
 age = st.sidebar.number_input("나이 (세)", min_value=1, max_value=120, value=25)
@@ -37,7 +37,7 @@ height = st.sidebar.number_input("키 (cm)", min_value=100.0, max_value=250.0, v
 weight = st.sidebar.number_input("몸무게 (kg)", min_value=30.0, max_value=250.0, value=70.0)
 goal = st.sidebar.selectbox("나의 건강 목표", ["다이어트 (체중 감량)", "벌크업 (근육량 증가)", "유지 및 건강 관리"])
 
-# Mifflin-St Jeor 기초대사량 계산 공식 공식 공식
+# Mifflin-St Jeor 기초대사량 계산 공식
 if gender == "남성":
     bmr = 10 * weight + 6.25 * height - 5 * age + 5
 else:
@@ -49,7 +49,6 @@ st.sidebar.markdown("---")
 st.sidebar.header("🐱 마이 펫 룸")
 st.sidebar.subheader(f"💰 보유 포인트: {st.session_state.points} p")
 
-# --- 기존 이미지 로드 부분을 아래 코드로 안전하게 교체 ---
 image_file = "cat_base.png"
 if st.session_state.equipped == "🕶️ 힙스터 선글라스":
     image_file = "cat_sunglasses.png"
@@ -58,29 +57,23 @@ elif st.session_state.equipped == "👑 명품 골드 왕관":
 elif st.session_state.equipped == "🤖 하이닉스 반도체 슈트":
     image_file = "cat_suit.png"
 
-# 안전한 이미지 로드 프로세스 (try-except 예외 처리 추가)
+# [버그 수정] 중복 코드를 제거하고, try-except 방어막이 쳐진 단 하나의 안전한 로직만 남겨둠
 if os.path.exists(image_file):
     try:
-        # 이미지를 PIL로 먼저 정상적으로 열 수 있는지 검증
         with Image.open(image_file) as img:
             st.sidebar.image(img, caption=f"현재 상태: {st.session_state.equipped}", use_container_width=True)
     except Exception as img_err:
-        # 파일이 손상되었을 경우 에러로 앱이 죽지 않고 이모지로 대체
         st.sidebar.markdown(f"<div style='font-size: 80px; text-align: center;'>🐱</div>", unsafe_allow_html=True)
         st.sidebar.warning(f"⚠️ '{image_file}' 파일 구조가 손상되어 이모지로 대체합니다.")
 else:
     st.sidebar.markdown("<div style='font-size: 80px; text-align: center;'>🐱</div>", unsafe_allow_html=True)
     st.sidebar.info(f"💡 펫방 대기 중 (장착: {st.session_state.equipped})")
 
-if os.path.exists(image_file):
-    st.sidebar.image(image_file, caption=f"현재 상태: {st.session_state.equipped}", use_container_width=True)
-else:
-    st.sidebar.info(f"🐱 펫 대기 중 (장착: {st.session_state.equipped})")
-
 # 4. 날짜 키 생성 및 금일 데이터 바인딩
 selected_date = st.date_input("조회 및 기록할 날짜를 선택하세요", datetime.date.today())
 date_key = str(selected_date)
 
+# [KeyError 완전 방지] 새로운 날짜 선택 시 6대 식단 딕셔너리 구조까지 완벽하게 강제 초기화 생성
 if date_key not in st.session_state.calendar_db:
     st.session_state.calendar_db[date_key] = {
         "meals": {"아침": "", "점심": "", "저녁": "", "간식": "", "야식": "", "카페": ""},
@@ -123,7 +116,6 @@ with tab1:
             try:
                 model = genai.GenerativeModel('models/gemini-3.1-flash-lite')
                 
-                # 사용자의 신체 프로필 및 칼로리 밸런스 데이터 바인딩을 위한 프롬프트 가이드
                 prompt = f"""
                 사용자 프로필: 성별 {gender}, 나이 {age}세, 키 {height}cm, 몸무게 {weight}kg, 건강 목표 [{goal}]
                 계산된 기초대사량(BMR): {int(bmr)} kcal
@@ -152,6 +144,7 @@ with tab1:
                 st.session_state.calendar_db[date_key]["ai_analysis"] = response.text
                 st.session_state.points += 100
                 st.toast("종합 정산 완료! +100p 🐾")
+                st.rerun()
             except Exception as e:
                 st.error(f"오류: {e}")
                 
@@ -184,9 +177,7 @@ with tab2:
                     response = model.generate_content(workout_prompt)
                     st.markdown(response.text)
                     
-                    # 캘린더 DB 실시간 동기화
                     st.session_state.calendar_db[date_key]["workout_log"] = f"{final_workout} {workout_time}분"
-                    # 간이 계산식 반영 (1분당 8kcal 소모 가정)
                     st.session_state.calendar_db[date_key]["workout_kcal"] = workout_time * 8
                     
                     st.session_state.points += 100
