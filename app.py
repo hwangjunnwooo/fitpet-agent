@@ -8,7 +8,7 @@ import os
 st.set_page_config(page_title="피트펫 (FitPet) 프리미엄", page_icon="🐾", layout="centered")
 
 st.title("🐾 피트펫 (FitPet) 프리미엄")
-st.caption("개인 맞춤형 대사량 분석 & 6대 식단 관리 에이전트 (SK하이닉스 신입사원 과제)")
+st.caption("개인 맞춤형 대사량 분석 & 식단 관리 에이전트 (SK하이닉스 신입사원 과제)")
 st.markdown("---")
 
 # 2. 세션 상태(데이터 저장용) 초기화
@@ -86,15 +86,15 @@ current_data = st.session_state.calendar_db[date_key]
 
 # 5. 메인 기능 탭 구성
 tab1, tab2, tab3, tab4 = st.tabs([
-    "🍱 6대 식단 관리 & 캘린더 연동", 
+    "🍱 하루 식단 관리 & 캘린더 연동", 
     "⚡ 정밀 운동 피드백", 
     "💉 비만 치료제 케어", 
     "🛍️ 펫샵 (Pet Shop)"
 ])
 
-# --- 탭 1: 6대 식단 관리 및 실시간 분석 ---
+# --- 탭 1: 하루 식단 관리 및 실시간 분석 ---
 with tab1:
-    st.header("🍱 하루 6식 세분화 식단 관리")
+    st.header("🍱 하루 세분화 식단 관리")
     st.write("각 칸에 드신 식단이나 음료 종류를 자유롭게 입력하세요. 사진을 추가하여 일괄 분석도 가능합니다.")
     
     # 6개 섹션 레이아웃 구성
