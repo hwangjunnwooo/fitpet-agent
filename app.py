@@ -66,7 +66,7 @@ st.sidebar.markdown(f"""
     100% {{ transform: rotateX(15deg) rotateY(-20deg); }}
 }}
 </style>
-""", unsafe_allow_limits=True, unsafe_allow_html=True)
+""", unsafe_allow_html=True)
 
 st.sidebar.markdown(f"**현재 장착:** {st.session_state.equipped}")
 
