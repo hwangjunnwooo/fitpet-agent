@@ -101,7 +101,7 @@ current_data = st.session_state.calendar_db[date_key]
 # 5. 메인 기능 탭 구성 (캘린더 대시보드를 1번으로 배치)
 tab1, tab2, tab3, tab4, tab5 = st.tabs([
     "🗓️ 대형 비주얼 캘린더",
-    "🍱 6대 식단 관리", 
+    "🍱 하루 식단 관리", 
     "⚡ 정밀 운동 피드백", 
     "💉 비만 치료제 케어", 
     "🛍️ 펫샵 (Pet Shop)"
@@ -139,9 +139,9 @@ with tab1:
             if d_data["ai_analysis"]:
                 st.markdown(f"**🤖 AI 리포트 요약:**\n{d_data['ai_analysis']}")
 
-# --- 탭 2: 6대 식단 관리 및 실시간 분석 ---
+# --- 탭 2: 하루 식단 관리 및 실시간 분석 ---
 with tab2:
-    st.header("🍱 하루 6식 세분화 식단 관리")
+    st.header("🍱 하루 세분화 식단 관리")
     st.write("각 칸에 드신 식단 정보를 자유롭게 입력하세요.")
     
     c1, c2, c3 = st.columns(3)
