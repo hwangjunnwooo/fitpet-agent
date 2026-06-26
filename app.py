@@ -119,11 +119,11 @@ current_data = st.session_state.calendar_db[date_key]
 # 5. 메인 기능 탭 구성 (총 6개 탭 레이아웃 갱신)
 tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
     "🗓️ 대형 비주얼 캘린더",
+    "📊 인바디 & 체중 그래프",
     "🍱 하루 식단 관리", 
     "⚡ 정밀 운동 피드백", 
     "💉 비만 치료제 케어", 
-    "🛍️ 펫샵 (Pet Shop)",
-    "📊 인바디 & 체중 그래프"
+    "🛍️ 펫샵 (Pet Shop)"
 ])
 
 # --- 탭 1: 대형 비주얼 캘린더 대시보드 ---
