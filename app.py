@@ -121,7 +121,7 @@ elif "강아지" in st.session_state.equipped or "바둑이" in st.session_state
     elif "왕관" in st.session_state.equipped: image_file = "dog_crown.png"
     elif "하이닉스" in st.session_state.equipped: image_file = "dog_suit.png"
     else: image_file = "dog_base.png"
-elif "레서판다" in st.session_state.equipped:
+elif "레서판다" in st.session_state.equipped or "래서판다" in st.session_state.equipped:
     emoji_avatar = "🐼"
     if "대나무" in st.session_state.equipped: image_file = "panda_bamboo.png"
     elif "선글라스" in st.session_state.equipped: image_file = "panda_sunglasses.png"
