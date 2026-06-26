@@ -156,132 +156,9 @@ with tab1:
             if d_data["ai_analysis"]:
                 st.markdown(f"**🤖 AI 리포트 요약:**\n{d_data['ai_analysis']}")
 
-# --- 탭 2: 하루 식단 관리 및 실시간 분석 ---
+
+# --- [신규 영역] 탭 2: 인바디 & 체중 그래프 대시보드 ---
 with tab2:
-    st.header("🍱 하루 세분화 식단 관리")
-    c1, c2, c3 = st.columns(3)
-    with c1:
-        current_data["meals"]["아침"] = st.text_input("🌅 아침 식사", value=current_data["meals"]["아침"])
-        current_data["meals"]["간식"] = st.text_input("🍪 간식 타임", value=current_data["meals"]["간식"])
-    with c2:
-        current_data["meals"]["점심"] = st.text_input("☀️ 점심 식사", value=current_data["meals"]["점심"])
-        current_data["meals"]["야식"] = st.text_input("🌙 야식 폭풍", value=current_data["meals"]["야식"])
-    with c3:
-        current_data["meals"]["저녁"] = st.text_input("🌆 저녁 식사", value=current_data["meals"]["저녁"])
-        current_data["meals"]["카페"] = st.text_input("☕ 카페/음료", value=current_data["meals"]["카페"])
-        
-    food_img = st.file_uploader("📸 분석용 식단/식단표 이미지 첨부 (선택)", type=["jpg", "jpeg", "png"])
-    
-    if st.button("📊 오늘 하루 영양성분 종합 평가 실행"):
-        with st.spinner("Gemini 3.1 Flash-Lite 분석 중..."):
-            try:
-                model = genai.GenerativeModel('models/gemini-3.1-flash-lite')
-                prompt = f"프로필: BMR {int(bmr)}kcal, 목표 {goal}. 아침:{current_data['meals']['아침']}, 점심:{current_data['meals']['점심']}, 저녁:{current_data['meals']['저녁']}, 간식:{current_data['meals']['간식']}, 야식:{current_data['meals']['야식']}, 카페:{current_data['meals']['카페']}. 칼로리, 나트륨, 카페인, 탄단지를 추정 및 일일 권장량과 [좋음/보통/나쁨]으로 비교하고, 대사 칼로리 밸런스 평가와 한 줄 단문 보완점을 출력해줘."
-                if food_img:
-                    img = Image.open(food_img)
-                    response = model.generate_content([prompt, img])
-                else:
-                    response = model.generate_content(prompt)
-                    
-                current_data["ai_analysis"] = response.text
-                current_data["bad_feedback"] = "염분량 및 정제당 섭취 통제 권장"
-                st.session_state.points += 100
-                st.toast("종합 정산 완료! +100p 🐾")
-                st.rerun()
-            except Exception as e:
-                st.error(f"오류: {e}")
-                
-    if current_data["ai_analysis"]:
-        st.markdown(current_data["ai_analysis"])
-
-# --- 탭 3: 정밀 운동 피드백 ---
-with tab3:
-    st.header("⚡ 정밀 운동 피드백 및 칼로리 예측")
-    workout_type = st.selectbox("운동 종류 선택", ["선택하세요", "러닝(런닝)", "테니스", "웨이트 트레이닝", "자전거", "수영", "기타 활동 직접 입력"])
-    workout_time = st.number_input("운동 시간 입력 (분 단위)", min_value=1, max_value=480, value=30, key="work_time")
-    
-    custom_workout = ""
-    if workout_type == "기타 활동 직접 입력":
-        custom_workout = st.text_input("수행하신 운동 명칭을 입력하세요")
-        
-    if st.button("운동 평가 및 캘린더 연동"):
-        final_workout = custom_workout if workout_type == "기타 활동 직접 입력" else workout_type
-        if workout_type != "선택하세요":
-            with st.spinner("스포츠 의학 코칭 생성 중..."):
-                try:
-                    model = genai.GenerativeModel('models/gemini-3.1-flash-lite')
-                    workout_prompt = f"{final_workout}을 {workout_time}분 수행했을 때 예상 소모 칼로리와 운동 부상 방지 팁(러닝 시 무릎 보호, 테니스 엘보우 증상 방지 핸들링 등)을 상세히 작성해줘."
-                    response = model.generate_content(workout_prompt)
-                    st.markdown(response.text)
-                    
-                    current_data["workout_log"] = f"{final_workout} {workout_time}분"
-                    current_data["workout_kcal"] = workout_time * 8
-                    st.session_state.points += 100
-                    st.toast("운동 기록 완료! +100p 🐾")
-                except Exception as e:
-                    st.error(f"오류: {e}")
-
-# --- 탭 4: 비만 치료제 케어 ---
-with tab4:
-    st.header("💉 비만 치료제 케어")
-    med_choice = st.selectbox("복용 중인 치료제 선택", ["선택 안 함", "위고비 (Wegovy)", "마운자로 (Mounjaro)"])
-    dose_choice = st.select_slider("투약 용량 설정", options=["0mg", "0.25mg", "0.5mg", "1.0mg", "1.7mg", "2.4mg"])
-    side_1 = st.checkbox("메스꺼움 / 구토")
-    side_2 = st.checkbox("설사 / 변비")
-    side_3 = st.checkbox("심한 복통")
-    
-    if st.button("복용 기록 완료"):
-        current_data["med_name"] = med_choice
-        current_data["med_dose"] = dose_choice
-        if med_choice != "선택 안 함" and (side_1 or side_2 or side_3):
-            current_data["bad_feedback"] = f"치료제 투약 이상 징후 (용량: {dose_choice})"
-            st.error("⚠️ 부작용 신호 포착. 증상 지속 시 의사와 상담하세요.")
-        else:
-            st.success("✅ 안전한 복약 일지가 동기화되었습니다.")
-        st.session_state.points += 100
-        st.toast("복약 체크 완료! +100p 🐾")
-
-# --- 탭 5: 🛍️ 펫샵 (Pet Shop) ---
-with tab5:
-    st.header("🛍️ 피트펫 상점")
-    shop_cat = st.radio("상점 카테고리 선택", ["🐱 고양이 룸 에셋", "🐶 강아지 룸 에셋"])
-    
-    if shop_cat == "🐱 고양이 룸 에셋":
-        items_to_display = {
-            "기본 고양이": 0, "🕶️ 힙스터 선글라스 (고양이)": 100, "👑 명품 골드 왕관 (고양이)": 200, "🤖 하이닉스 유니폼 (고양이)": 300
-        }
-    else:
-        items_to_display = {
-            "기본 강아지": 100, "🕶️ 힙스터 강아지": 150, "👑 왕관 강아지": 220, "🤖 하이닉스 강아지": 320
-        }
-        
-    col1, col2, col3, col4 = st.columns(4)
-    cols = [col1, col2, col3, col4]
-    
-    for idx, (item_name, price) in enumerate(items_to_display.items()):
-        with cols[idx % 4]:
-            st.markdown(f"**{item_name}**")
-            st.write(f"💰 {price} p")
-            if item_name in st.session_state.inventory:
-                if st.session_state.equipped == item_name:
-                    st.button("🟢 장착 중", key=f"shop_eq_{item_name}", disabled=True)
-                else:
-                    if st.button("🔄 장착", key=f"shop_eq_{item_name}"):
-                        st.session_state.equipped = item_name
-                        st.rerun()
-            else:
-                if st.button("🛒 구매", key=f"shop_buy_{item_name}"):
-                    if st.session_state.points >= price:
-                        st.session_state.points -= price
-                        st.session_state.inventory.append(item_name)
-                        st.session_state.equipped = item_name
-                        st.success(f"🎉 구매 완료!")
-                        st.rerun()
-                    else:
-                        st.error("포인트 부족!")
-
-# --- [신규 영역] 탭 6: 인바디 & 체중 그래프 대시보드 ---
-with tab6:
     st.header("📊 체성분 대시보드 및 AI 인바디 파싱")
     st.write("당일 측정한 체중을 수동으로 입력하거나, 인바디 결과지 텍스트/사진을 첨부하면 자동으로 스캐닝합니다.")
     
@@ -340,3 +217,130 @@ with tab6:
         st.line_chart(df, y="체중 (kg)")
     else:
         st.info("시각화할 누적 체중 데이터가 부족합니다. 각 날짜별 체중을 입력해 주세요.")
+
+
+# --- 탭 3: 하루 식단 관리 및 실시간 분석 ---
+with tab3:
+    st.header("🍱 하루 세분화 식단 관리")
+    c1, c2, c3 = st.columns(3)
+    with c1:
+        current_data["meals"]["아침"] = st.text_input("🌅 아침 식사", value=current_data["meals"]["아침"])
+        current_data["meals"]["간식"] = st.text_input("🍪 간식 타임", value=current_data["meals"]["간식"])
+    with c2:
+        current_data["meals"]["점심"] = st.text_input("☀️ 점심 식사", value=current_data["meals"]["점심"])
+        current_data["meals"]["야식"] = st.text_input("🌙 야식 폭풍", value=current_data["meals"]["야식"])
+    with c3:
+        current_data["meals"]["저녁"] = st.text_input("🌆 저녁 식사", value=current_data["meals"]["저녁"])
+        current_data["meals"]["카페"] = st.text_input("☕ 카페/음료", value=current_data["meals"]["카페"])
+        
+    food_img = st.file_uploader("📸 분석용 식단/식단표 이미지 첨부 (선택)", type=["jpg", "jpeg", "png"])
+    
+    if st.button("📊 오늘 하루 영양성분 종합 평가 실행"):
+        with st.spinner("Gemini 3.1 Flash-Lite 분석 중..."):
+            try:
+                model = genai.GenerativeModel('models/gemini-3.1-flash-lite')
+                prompt = f"프로필: BMR {int(bmr)}kcal, 목표 {goal}. 아침:{current_data['meals']['아침']}, 점심:{current_data['meals']['점심']}, 저녁:{current_data['meals']['저녁']}, 간식:{current_data['meals']['간식']}, 야식:{current_data['meals']['야식']}, 카페:{current_data['meals']['카페']}. 칼로리, 나트륨, 카페인, 탄단지를 추정 및 일일 권장량과 [좋음/보통/나쁨]으로 비교하고, 대사 칼로리 밸런스 평가와 한 줄 단문 보완점을 출력해줘."
+                if food_img:
+                    img = Image.open(food_img)
+                    response = model.generate_content([prompt, img])
+                else:
+                    response = model.generate_content(prompt)
+                    
+                current_data["ai_analysis"] = response.text
+                current_data["bad_feedback"] = "염분량 및 정제당 섭취 통제 권장"
+                st.session_state.points += 100
+                st.toast("종합 정산 완료! +100p 🐾")
+                st.rerun()
+            except Exception as e:
+                st.error(f"오류: {e}")
+                
+    if current_data["ai_analysis"]:
+        st.markdown(current_data["ai_analysis"])
+
+# --- 탭 4: 정밀 운동 피드백 ---
+with tab4:
+    st.header("⚡ 정밀 운동 피드백 및 칼로리 예측")
+    workout_type = st.selectbox("운동 종류 선택", ["선택하세요", "러닝(런닝)", "테니스", "웨이트 트레이닝", "자전거", "수영", "기타 활동 직접 입력"])
+    workout_time = st.number_input("운동 시간 입력 (분 단위)", min_value=1, max_value=480, value=30, key="work_time")
+    
+    custom_workout = ""
+    if workout_type == "기타 활동 직접 입력":
+        custom_workout = st.text_input("수행하신 운동 명칭을 입력하세요")
+        
+    if st.button("운동 평가 및 캘린더 연동"):
+        final_workout = custom_workout if workout_type == "기타 활동 직접 입력" else workout_type
+        if workout_type != "선택하세요":
+            with st.spinner("스포츠 의학 코칭 생성 중..."):
+                try:
+                    model = genai.GenerativeModel('models/gemini-3.1-flash-lite')
+                    workout_prompt = f"{final_workout}을 {workout_time}분 수행했을 때 예상 소모 칼로리와 운동 부상 방지 팁(러닝 시 무릎 보호, 테니스 엘보우 증상 방지 핸들링 등)을 상세히 작성해줘."
+                    response = model.generate_content(workout_prompt)
+                    st.markdown(response.text)
+                    
+                    current_data["workout_log"] = f"{final_workout} {workout_time}분"
+                    current_data["workout_kcal"] = workout_time * 8
+                    st.session_state.points += 100
+                    st.toast("운동 기록 완료! +100p 🐾")
+                except Exception as e:
+                    st.error(f"오류: {e}")
+
+# --- 탭 5: 비만 치료제 케어 ---
+with tab5:
+    st.header("💉 비만 치료제 케어")
+    med_choice = st.selectbox("복용 중인 치료제 선택", ["선택 안 함", "위고비 (Wegovy)", "마운자로 (Mounjaro)"])
+    dose_choice = st.select_slider("투약 용량 설정", options=["0mg", "0.25mg", "0.5mg", "1.0mg", "1.7mg", "2.4mg"])
+    side_1 = st.checkbox("메스꺼움 / 구토")
+    side_2 = st.checkbox("설사 / 변비")
+    side_3 = st.checkbox("심한 복통")
+    
+    if st.button("복용 기록 완료"):
+        current_data["med_name"] = med_choice
+        current_data["med_dose"] = dose_choice
+        if med_choice != "선택 안 함" and (side_1 or side_2 or side_3):
+            current_data["bad_feedback"] = f"치료제 투약 이상 징후 (용량: {dose_choice})"
+            st.error("⚠️ 부작용 신호 포착. 증상 지속 시 의사와 상담하세요.")
+        else:
+            st.success("✅ 안전한 복약 일지가 동기화되었습니다.")
+        st.session_state.points += 100
+        st.toast("복약 체크 완료! +100p 🐾")
+
+# --- 탭 6: 🛍️ 펫샵 (Pet Shop) ---
+with tab6:
+    st.header("🛍️ 피트펫 상점")
+    shop_cat = st.radio("상점 카테고리 선택", ["🐱 고양이 룸 에셋", "🐶 강아지 룸 에셋"])
+    
+    if shop_cat == "🐱 고양이 룸 에셋":
+        items_to_display = {
+            "기본 고양이": 0, "🕶️ 힙스터 선글라스 (고양이)": 100, "👑 명품 골드 왕관 (고양이)": 200, "🤖 하이닉스 유니폼 (고양이)": 300
+        }
+    else:
+        items_to_display = {
+            "기본 강아지": 100, "🕶️ 힙스터 강아지": 150, "👑 왕관 강아지": 220, "🤖 하이닉스 강아지": 320
+        }
+        
+    col1, col2, col3, col4 = st.columns(4)
+    cols = [col1, col2, col3, col4]
+    
+    for idx, (item_name, price) in enumerate(items_to_display.items()):
+        with cols[idx % 4]:
+            st.markdown(f"**{item_name}**")
+            st.write(f"💰 {price} p")
+            if item_name in st.session_state.inventory:
+                if st.session_state.equipped == item_name:
+                    st.button("🟢 장착 중", key=f"shop_eq_{item_name}", disabled=True)
+                else:
+                    if st.button("🔄 장착", key=f"shop_eq_{item_name}"):
+                        st.session_state.equipped = item_name
+                        st.rerun()
+            else:
+                if st.button("🛒 구매", key=f"shop_buy_{item_name}"):
+                    if st.session_state.points >= price:
+                        st.session_state.points -= price
+                        st.session_state.inventory.append(item_name)
+                        st.session_state.equipped = item_name
+                        st.success(f"🎉 구매 완료!")
+                        st.rerun()
+                    else:
+                        st.error("포인트 부족!")
+
+
