@@ -82,8 +82,7 @@ sidebar_weight = st.sidebar.number_input(
     "몸무게 (kg)", 
     min_value=30.0, 
     max_value=250.0, 
-    value=st.session_state.current_weight,
-    key="sidebar_weight_input"
+    value=st.session_state.current_weight
 )
 
 # 사이드바에서 사용자가 숫자를 바꾸면 세션과 달력 DB에 즉시 전사 반영
@@ -204,7 +203,7 @@ with tab2:
     
     if input_mode == "📝 정밀 수동 입력":
         # 🚨 인바디 탭의 체중 입력창의 value도 세션 상태와 완벽 결합
-        w_val = st.number_input("오늘의 체중 (kg)", min_value=30.0, max_value=250.0, value=float(st.session_state.current_weight), key="inbody_weight_input")
+        w_val = st.number_input("오늘의 체중 (kg)", min_value=30.0, max_value=250.0, value=float(st.session_state.current_weight))
         m_val = st.number_input("골격근량 (kg)", min_value=0.0, max_value=100.0, value=float(current_data.get("skeletal_muscle", 31.5)))
         f_val = st.number_input("체지방률 (%)", min_value=0.0, max_value=100.0, value=float(current_data.get("body_fat_pct", 22.0)))
         
@@ -227,32 +226,27 @@ with tab2:
                         img = Image.open(inbody_file)
                         response = model.generate_content([inbody_prompt, img])
                         
-                        # AI 추출 가상 수치 (실제로는 response에서 파싱하거나 데모용 수치)
+                        # AI 추출 수치 반영 (데모용 고정 데이터)
                         scanned_weight = 68.5  
                         scanned_muscle = 32.1
                         scanned_fat_pct = 21.1
                         
-                        # 🚨 [핵심 버그 수정]: 위젯의 세션 State Key들을 직접 강제 매칭 유도
-                        # 이렇게 위젯 key를 직접 건드려주어야 rerun 시 수동 입력창 값에 덮어씌워지지 않습니다.
-                        st.session_state["sidebar_weight_input"] = scanned_weight
-                        st.session_state["inbody_weight_input"] = scanned_weight
-                        
-                        # 1. 전역 현재 몸무게 상태 업데이트
+                        # 전역 변수 및 달력 DB에 안전하게 주입
                         st.session_state.current_weight = scanned_weight
-                        
-                        # 2. 선택된 날짜의 달력 데이터베이스 구조에 영구 주입
                         st.session_state.calendar_db[date_key]["weight"] = scanned_weight  
                         st.session_state.calendar_db[date_key]["skeletal_muscle"] = scanned_muscle
                         st.session_state.calendar_db[date_key]["body_fat_pct"] = scanned_fat_pct
                         
-                        st.success("🎉 AI 인바디 스캔 값이 캘린더, 사이드바, 수동 입력창까지 전사 동기화되었습니다!")
+                        st.success("🎉 AI 인바디 스캔 데이터 전사 동기화 완료!")
                         st.info(response.text)
                         
-                        # 3. 화면 컴포넌트 강제 재렌더링
+                        # 컴포넌트 즉시 새로고침 (오류 없이 깨끗하게 반영됩니다)
                         st.rerun() 
                         
                     except Exception as e:
                         st.error(f"오류: {e}")
+            else:
+                st.warning("파일을 첨부해 주세요.")
                         
     st.markdown("---")
     st.subheader("📈 실시간 누적 체중 변화 차트")
