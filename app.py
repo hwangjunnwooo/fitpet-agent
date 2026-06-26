@@ -311,4 +311,90 @@ with tab4:
             with st.spinner("스포츠 의학 코칭 생성 중..."):
                 try:
                     model = genai.GenerativeModel('models/gemini-3.1-flash-lite')
-                    workout_prompt = f"운동: {final_workout} ({workout_time}분), 질환: {st.session_state.medical_profile['diseases']}. 주의사항과 소
+                    workout_prompt = f"운동: {final_workout} ({workout_time}분), 질환: {st.session_state.medical_profile['diseases']}. 주의사항과 소모 칼로리를 알려줘."
+                    response = model.generate_content(workout_prompt)
+                    st.markdown(response.text)
+                    
+                    st.session_state.calendar_db[date_key]["workout_log"] = f"{final_workout} {workout_time}분"
+                    st.session_state.calendar_db[date_key]["workout_kcal"] = workout_time * 8
+                    st.session_state.points += 100
+                    st.toast("운동 기록 완료! +100p 🐾")
+                except Exception as e:
+                    st.error(f"오류: {e}")
+
+# --- 탭 5: 비만 치료제 케어 ---
+with tab5:
+    st.header("💉 비만 치료제 케어")
+    med_choice = st.selectbox("복용 중인 치료제 선택", ["선택 안 함", "위고비 (Wegovy)", "마운자로 (Mounjaro)"])
+    dose_choice = st.select_slider("투약 용량 설정", options=["0mg", "0.25mg", "0.5mg", "1.0mg", "1.7mg", "2.4mg"])
+    side_1 = st.checkbox("메스꺼움 / 구토")
+    side_2 = st.checkbox("설사 / 변비")
+    side_3 = st.checkbox("심한 복통")
+    
+    if st.button("복용 기록 완료"):
+        st.session_state.calendar_db[date_key]["med_name"] = med_choice
+        st.session_state.calendar_db[date_key]["med_dose"] = dose_choice
+        if med_choice != "선택 안 함" and (side_1 or side_2 or side_3):
+            st.session_state.calendar_db[date_key]["bad_feedback"] = f"투약 부작용 발생 ({dose_choice})"
+            st.error("⚠️ 부작용 신호 포착. 처방의와 상담하세요.")
+        else:
+            st.success("✅ 안전한 복약 일지가 동기화되었습니다.")
+        st.session_state.points += 100
+        st.toast("복약 체크 완료! +100p 🐾")
+
+# --- 탭 6: 🏥 기저질환 & 메디컬 프로필 세이프가드 ---
+with tab6:
+    st.header("🏥 메디컬 프로필 & 증상 모니터링 세이프가드")
+    dis_input = st.text_area("📋 기저 질환 기록", value=st.session_state.medical_profile["diseases"])
+    med_input = st.text_area("💊 복용 중인 처방약/영양제 기록", value=st.session_state.medical_profile["current_meds"])
+    
+    st.session_state.medical_profile["diseases"] = dis_input
+    st.session_state.medical_profile["current_meds"] = med_input
+    
+    st.markdown("---")
+    symptom_input = st.text_input("❗ 오늘 평소와 다른 특이 증상이 있으신가요?")
+    if st.button("🩺 신체 위험도 스캐닝"):
+        if symptom_input:
+            with st.spinner("증상 분석 중..."):
+                model = genai.GenerativeModel('models/gemini-3.1-flash-lite')
+                response = model.generate_content(f"증상: '{symptom_input}'. 응급상황 유무와 대처법을 조언하되 위험시 응급실 유도 문구를 명시해줘.")
+                st.markdown(response.text)
+
+# --- 탭 7: 🛍️ 펫샵 (Pet Shop) ---
+with tab7:
+    st.header("🛍️ 피트펫 상점")
+    shop_cat = st.radio("상점 카테고리 선택", ["🐱 고양이 룸 에셋", "🐶 강아지 룸 에셋", "🐼 레서판다 에셋 룸", "🦦 수달 에셋 룸"])
+    
+    if shop_cat == "🐱 고양이 룸 에셋":
+        items_to_display = {"기본 고양이": 0, "🕶️ 힙스터 선글라스 (고양이)": 100, "👑 명품 골드 왕관 (고양이)": 200, "🤖 하이닉스 유니폼 (고양이)": 300}
+    elif shop_cat == "🐶 강아지 룸 에셋":
+        items_to_display = {"기본 강아지": 100, "🕶️ 힙스터 강아지": 150, "👑 왕관 강아지": 220, "🤖 하이닉스 강아지": 320}
+    elif shop_cat == "🐼 레서판다 에셋 룸":
+        items_to_display = {"기본 레서판다": 100, "🎋 대나무 레서판다": 180, "🕶️ 선글라스 래서판다": 230, "🐾 위협하는 래서판다": 330}
+    elif shop_cat == "🦦 수달 에셋 룸":
+        items_to_display = {"기본 수달": 100, "🏊 수영하는 수달": 180, "🐚 조개 먹는 수달": 250, "🐟 사냥하는 수달": 350}
+        
+    col1, col2, col3, col4 = st.columns(4)
+    cols = [col1, col2, col3, col4]
+    
+    for idx, (item_name, price) in enumerate(items_to_display.items()):
+        with cols[idx % 4]:
+            st.markdown(f"**{item_name}**")
+            st.write(f"💰 {price} p")
+            if item_name in st.session_state.inventory:
+                if st.session_state.equipped == item_name:
+                    st.button("🟢 장착 중", key=f"shop_eq_{item_name}", disabled=True)
+                else:
+                    if st.button("🔄 장착", key=f"shop_eq_{item_name}"):
+                        st.session_state.equipped = item_name
+                        st.rerun()
+            else:
+                if st.button("🛒 구매", key=f"shop_buy_{item_name}"):
+                    if st.session_state.points >= price:
+                        st.session_state.points -= price
+                        st.session_state.inventory.append(item_name)
+                        st.session_state.equipped = item_name
+                        st.success(f"🎉 구매 완료!")
+                        st.rerun()
+                    else:
+                        st.error("포인트 부족!")
