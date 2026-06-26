@@ -273,10 +273,39 @@ with tab3:
             try:
                 model = genai.GenerativeModel('models/gemini-3.1-flash-lite')
                 prompt = f"""
-                프로필: BMR {int(bmr)}kcal, 목표 {goal}. 몸무게 {st.session_state.current_weight}kg
-                기저질환 세이프가드 프로필: [{st.session_state.medical_profile['diseases']}]
-                현재 복용 약물 리스트: [{st.session_state.medical_profile['current_meds']}]
-                식단: 아침:{st.session_state.calendar_db[date_key]['meals']['아침']}, 점심:{st.session_state.calendar_db[date_key]['meals']['점심']}, 저녁:{st.session_state.calendar_db[date_key]['meals']['저녁']}, 간식:{st.session_state.calendar_db[date_key]['meals']['간식']}, 야식:{st.session_state.calendar_db[date_key]['meals']['야식']}, 카페:{st.session_state.calendar_db[date_key]['meals']['카페']}.
+                당신은 임상영양사 겸 스포츠 의학 에이전트 '피트펫'입니다. 
+                제공된 사용자의 프로필과 식단 로그를 바탕으로 고도화된 영양 성분 및 칼로리 정산 리포트를 마크다운 형태로 출력해 주세요.
+
+                [사용자 프로필 데이터]
+                - 성별 및 신체 지표: {gender}, 나이 {age}세, 키 {height}cm, 몸무게 {st.session_state.current_weight}kg
+                - 건강 목표: [{goal}]
+                - 하루 목표 대사량 (기초대사량 BMR + 운동 소모): {int(bmr)} kcal + {current_data['workout_kcal']} kcal = {int(bmr) + current_data['workout_kcal']} kcal
+                - 기저질환 세이프가드 프로필: [{st.session_state.medical_profile['diseases']}]
+                - 현재 복용 약물 리스트: [{st.session_state.medical_profile['current_meds']}]
+
+                [오늘의 6대 식단 로그]
+                - 🌅 아침 식사: {st.session_state.calendar_db[date_key]['meals']['아침']}
+                - ☀️ 점심 식사: {st.session_state.calendar_db[date_key]['meals']['점심']}
+                - 🌆 저녁 식사: {st.session_state.calendar_db[date_key]['meals']['저녁']}
+                - 🍪 간식 타임: {st.session_state.calendar_db[date_key]['meals']['간식']}
+                - 🌙 야식 폭풍: {st.session_state.calendar_db[date_key]['meals']['야식']}
+                - ☕ 카페/음료: {st.session_state.calendar_db[date_key]['meals']['카페']}
+
+                [필수 출력 양식 및 조건]
+                1. 📊 [6대 식단별 칼로리 & 주요 성분 계측]
+                   - 아침, 점심, 저녁, 간식, 야식, 카페 각각의 메뉴를 기반으로 추정 칼로리(kcal), 탄수화물(g), 단백질(g), 지방(g), 나트륨(mg), 카페인(mg)을 연산하여 표(Table) 형태로 명확히 요약할 것.
+                
+                2. 🧬 [일일 권장량 비교 및 종합 영양소 평가]
+                   - 탄수화물, 단백질, 지방, 나트륨, 카페인 각각의 총합을 구한 뒤, 사용자의 신체 스펙 기준 일일 권장량과 비교하여 각각 [좋음 / 보통 / 나쁨]의 성적을 매길 것.
+                   - 특히 입력된 '기저질환'과 '복용 약물'을 고려하여 위험한 성분(예: 고혈압 환자의 높은 나트륨, 당뇨 환자의 정제당 등)이 있다면 강력하게 경고할 것.
+
+                3. ⚖️ [대사율 매칭 에너지 총량 밸런스 평가]
+                   - 오늘 먹은 [총 섭취 칼로리]와 사용자의 [하루 목표 대사량(BMR + 운동)] 총합을 정량적으로 비교할 것.
+                   - 사용자의 목표([{goal}])가 다이어트라면 적절한 칼로리 결손이 일어났는지, 벌크업이라면 충분한 잉여 칼로리와 단백질이 공급되었는지 분석하여 '오늘의 신체 수율(%)'을 위트 있게 산출할 것.
+
+                4. 🩺 [메디컬 면책 조항]
+                   - 전문의약품이나 처방에 대해서는 절대로 변경을 유도하거나 임의로 추천해서는 안 되며, 부족한 영양소를 채울 수 있는 일반 건강기능식품(영양제)만 가볍게 추천할 것.
+                   - 리포트 맨 마지막 줄에는 반드시 "⚠️ 본 조언은 AI 에이전트의 추정치이므로, 정확한 식단 및 투약 변경은 반드시 전문의와 상의하여 결정하십시오."라는 멘트를 포함할 것.
                 """
                 if food_img:
                     img = Image.open(food_img)
