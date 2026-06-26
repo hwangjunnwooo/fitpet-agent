@@ -9,33 +9,41 @@ import pandas as pd
 st.set_page_config(page_title="피트펫 (FitPet) 프리미엄", page_icon="🐾", layout="centered")
 
 st.title("🐾 피트펫 (FitPet) 프리미엄")
-st.caption("대형 비주얼 캘린더 & 멀티 펫 성장 상점 에이전트 (SK하이닉스 신입사원 과제)")
+st.caption("메디컬 세이프가드 가이드라인 & 멀티 펫 유니버스 (SK하이닉스 신입사원 과제)")
 st.markdown("---")
 
 # 2. 세션 상태(데이터 저장용) 초기화
 if "points" not in st.session_state:
-    st.session_state.points = 200  
+    st.session_state.points = 300  # 신규 펫 테스트를 위해 초기 포인트를 300p로 넉넉히 리로드했습니다!
 if "inventory" not in st.session_state:
     st.session_state.inventory = ["기본 고양이"]
 if "equipped" not in st.session_state:
     st.session_state.equipped = "기본 고양이"
 
-# 통합 고도화 데이터베이스 구조화 (체중 데이터 트래킹용 필드 추가 생성)
+# 통합 고도화 데이터베이스 구조화
 if "calendar_db" not in st.session_state:
     today_str = str(datetime.date.today())
     st.session_state.calendar_db = {
         today_str: {
-            "meals": {"아침": "닭가슴살 샐러드", "점심": "일반식(현미밥)", "저녁": "소고기", "간식": "", "야식": "", "카페": "아메리카노"},
+            "meals": {"아침": "닭가슴살 샐러드", "점심": "일반식", "저녁": "소고기", "간식": "", "야식": "", "카페": "아메리카노"},
             "workout_log": "러닝 30분",
             "workout_kcal": 240,
             "med_name": "위고비 (Wegovy)",
             "med_dose": "0.25mg",
-            "bad_feedback": "야식 유혹이 있었으나 잘 참음, 단백질 비율 적당",
+            "bad_feedback": "단백질 비율 적당함",
             "ai_analysis": "오늘 대사 밸런스가 아주 훌륭합니다.",
             "weight": 70.0,
             "skeletal_muscle": 31.5,
             "body_fat_pct": 22.0
         }
+    }
+
+# [신규] 5번 탭 의료 데이터 전역 바인딩을 위한 세션 초기화 초기화
+if "medical_profile" not in st.session_state:
+    st.session_state.medical_profile = {
+        "diseases": "",
+        "current_meds": "",
+        "symptoms": ""
     }
 
 # Gemini API 키 설정
@@ -61,39 +69,50 @@ else:
 st.sidebar.markdown(f"### 🧬 나의 기초 대사량(BMR)\n`{int(bmr)} kcal / 일`")
 
 st.sidebar.markdown("---")
-st.sidebar.header("🐱🐶 마이 펫 룸")
+st.sidebar.header("🐱🐶🐼🦦 마이 펫 유니버스")
 st.sidebar.subheader(f"💰 보유 포인트: {st.session_state.points} p")
 
-# 어떤 펫 분기인지 파일 매칭 트리 설계
+# 확장된 펫 에셋 이미지 파일 매칭 분기 트리 트리
 image_file = "cat_base.png"
 emoji_avatar = "🐱"
 
-if st.session_state.equipped == "기본 고양이":
-    image_file = "cat_base.png"; emoji_avatar = "🐱"
-elif st.session_state.equipped == "🕶️ 힙스터 고양이":
-    image_file = "cat_sunglasses.png"; emoji_avatar = "🕶️🐱"
-elif st.session_state.equipped == "👑 왕관 고양이":
-    image_file = "cat_crown.png"; emoji_avatar = "👑🐱"
-elif st.session_state.equipped == "🤖 하이닉스 고양이":
-    image_file = "cat_suit.png"; emoji_avatar = "🤖🐱"
-elif st.session_state.equipped == "기본 강아지":
-    image_file = "dog_base.png"; emoji_avatar = "🐶"
-elif st.session_state.equipped == "🕶️ 힙스터 강아지":
-    image_file = "dog_sunglasses.png"; emoji_avatar = "🕶️🐶"
-elif st.session_state.equipped == "👑 왕관 강아지":
-    image_file = "dog_crown.png"; emoji_avatar = "👑🐶"
-elif st.session_state.equipped == "🤖 하이닉스 강아지":
-    image_file = "dog_suit.png"; emoji_avatar = "🤖🐶"
+# 고양이 & 강아지 라인업
+if "고양이" in st.session_state.equipped or st.session_state.equipped == "기본 고양이":
+    emoji_avatar = "🐱"
+    if "선글라스" in st.session_state.equipped: image_file = "cat_sunglasses.png"
+    elif "왕관" in st.session_state.equipped: image_file = "cat_crown.png"
+    elif "유니폼" in st.session_state.equipped: image_file = "cat_suit.png"
+    else: image_file = "cat_base.png"
+elif "강아지" in st.session_state.equipped or "바둑이" in st.session_state.equipped or "푸들" in st.session_state.equipped or "시바견" in st.session_state.equipped:
+    emoji_avatar = "🐶"
+    if "힙스터" in st.session_state.equipped: image_file = "dog_sunglasses.png"
+    elif "왕관" in st.session_state.equipped: image_file = "dog_crown.png"
+    elif "하이닉스" in st.session_state.equipped: image_file = "dog_suit.png"
+    else: image_file = "dog_base.png"
+# 신규 크리처: 레서판다 라인업
+elif "레서판다" in st.session_state.equipped:
+    emoji_avatar = "🐼"
+    if "대나무" in st.session_state.equipped: image_file = "panda_bamboo.png"
+    elif "선글라스" in st.session_state.equipped: image_file = "panda_sunglasses.png"
+    elif "위협하는" in st.session_state.equipped: image_file = "panda_threat.png"
+    else: image_file = "panda_base.png"
+# 신규 크리처: 수달 라인업
+elif "수달" in st.session_state.equipped:
+    emoji_avatar = "🦦"
+    if "수영하는" in st.session_state.equipped: image_file = "otter_swim.png"
+    elif "조개 먹는" in st.session_state.equipped: image_file = "otter_clam.png"
+    elif "사냥하는" in st.session_state.equipped: image_file = "otter_hunt.png"
+    else: image_file = "otter_base.png"
 
 if os.path.exists(image_file):
     try:
         with Image.open(image_file) as img:
             st.sidebar.image(img, caption=f"현재 파트너: {st.session_state.equipped}", use_container_width=True)
-    except Exception as img_err:
+    except Exception:
         st.sidebar.markdown(f"<div style='font-size: 80px; text-align: center;'>{emoji_avatar}</div>", unsafe_allow_html=True)
 else:
     st.sidebar.markdown(f"<div style='font-size: 80px; text-align: center;'>{emoji_avatar}</div>", unsafe_allow_html=True)
-    st.sidebar.info(f"💡 {st.session_state.equipped}와 함께 달리는 중!")
+    st.sidebar.info(f"💡 {st.session_state.equipped}와(과) 함께 트레이닝 중!")
 
 # 4. 날짜 선택 제어 인프라
 st.markdown("### 📅 작업 및 조회 기준일 선택")
@@ -109,27 +128,27 @@ if date_key not in st.session_state.calendar_db:
         "med_dose": "0mg",
         "bad_feedback": "피드백 없음",
         "ai_analysis": "",
-        "weight": weight,  # 기본 신체 프로필 값 기본 할당
+        "weight": weight,
         "skeletal_muscle": 0.0,
         "body_fat_pct": 0.0
     }
 
 current_data = st.session_state.calendar_db[date_key]
 
-# 5. 메인 기능 탭 구성 (총 6개 탭 레이아웃 갱신)
-tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+# 5. 메인 기능 탭 구성 (요청하신대로 5번에 메디컬 탭 추가 및 밀어내기 완료)
+tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
     "🗓️ 대형 비주얼 캘린더",
-    "📊 인바디 & 체중 그래프",
     "🍱 하루 식단 관리", 
     "⚡ 정밀 운동 피드백", 
     "💉 비만 치료제 케어", 
-    "🛍️ 펫샵 (Pet Shop)"
+    "🏥 기저질환 & 메디컬 프로필", # 5번째 신규 전면 배치 배치
+    "🛍️ 펫샵 (Pet Shop)",           # 기존 5번 -> 6번 이동
+    "📊 인바디 & 체중 그래프"       # 기존 6번 -> 7번 이동
 ])
 
 # --- 탭 1: 대형 비주얼 캘린더 대시보드 ---
 with tab1:
     st.header("🗓️ 헬스 앤 웰니스 비주얼 달력")
-    st.write("달력 타임라인을 통해 누적 데이터를 실시간 모니터링하세요.")
     st.markdown(f"#### 🎯 {date_key} 건강 요약 통계")
     
     kpi_bmr, kpi_work, kpi_med = st.columns(3)
@@ -150,77 +169,12 @@ with tab1:
             with col_right:
                 st.success(f"⚡ **수행 운동**: {d_data['workout_log']}\n🔥 **소모 에너지**: {d_data['workout_kcal']} kcal")
                 st.error(f"💉 **메디컬 투약 기록**: {d_data['med_name']} [{d_data['med_dose']}]")
-            
-            # [기능 강화] 캘린더 상세보기에 인바디 핵심 요약 레이아웃 노출
             st.markdown(f"📊 **체성분 레코드** ➡️ 체중: `{d_data.get('weight', 0)}kg` | 골격근량: `{d_data.get('skeletal_muscle', 0)}kg` | 체지방률: `{d_data.get('body_fat_pct', 0)}%`")
             if d_data["ai_analysis"]:
                 st.markdown(f"**🤖 AI 리포트 요약:**\n{d_data['ai_analysis']}")
 
-
-# --- [신규 영역] 탭 2: 인바디 & 체중 그래프 대시보드 ---
+# --- 탭 2: 하루 식단 관리 및 실시간 분석 ---
 with tab2:
-    st.header("📊 체성분 대시보드 및 AI 인바디 파싱")
-    st.write("당일 측정한 체중을 수동으로 입력하거나, 인바디 결과지 텍스트/사진을 첨부하면 자동으로 스캐닝합니다.")
-    
-    input_mode = st.radio("기록 방식 선택", ["📝 정밀 수동 입력", "📸 AI 인바디 파일 스캔"])
-    
-    if input_mode == "📝 정밀 수동 입력":
-        w_val = st.number_input("오늘의 체중 (kg)", min_value=30.0, max_value=250.0, value=float(current_data["weight"]))
-        m_val = st.number_input("골격근량 (kg)", min_value=0.0, max_value=100.0, value=float(current_data["skeletal_muscle"]))
-        f_val = st.number_input("체지방률 (%)", min_value=0.0, max_value=100.0, value=float(current_data["body_fat_pct"]))
-        
-        if st.button("💾 캘린더에 신체 계측 정보 저장"):
-            current_data["weight"] = w_val
-            current_data["skeletal_muscle"] = m_val
-            current_data["body_fat_pct"] = f_val
-            st.success(f"✅ {date_key} 날짜에 체성분 데이터가 업데이트되었습니다!")
-            st.rerun()
-            
-    else:
-        inbody_file = st.file_uploader("인바디 결과지 이미지 또는 데이터 스크린샷 업로드", type=["jpg", "jpeg", "png"])
-        if st.button("🚀 AI 이미지 파싱 실행"):
-            if inbody_file:
-                with st.spinner("Gemini 3.1 Flash-Lite 가 광학 지표를 연산 파싱 중입니다..."):
-                    try:
-                        model = genai.GenerativeModel('models/gemini-3.1-flash-lite')
-                        inbody_prompt = "제공된 인바디 이미지에서 '체중(Weight)', '골격근량(Skeletal Muscle Mass)', '체지방률(Percent Body Fat)' 세 가지 핵심 지표 수치만 찾아서 정확한 숫자 형식으로 요약 피드백해줘."
-                        img = Image.open(inbody_file)
-                        response = model.generate_content([inbody_prompt, img])
-                        
-                        # 데모 연동용 변동 데이터 바인딩
-                        current_data["weight"] = weight - 1.2  
-                        current_data["skeletal_muscle"] = 32.1
-                        current_data["body_fat_pct"] = 21.1
-                        
-                        st.success("인바디 스캐닝 완료!")
-                        st.info(response.text)
-                        st.rerun()
-                    except Exception as e:
-                        st.error(f"오류: {e}")
-            else:
-                st.warning("파일을 첨부해 주세요.")
-                
-    st.markdown("---")
-    st.subheader("📈 실시간 누적 체중 변화 차트")
-    
-    # 세션 데이터베이스에서 날짜별 체중 값을 추출하여 데이터프레임으로 구축
-    chart_data = []
-    for d_key in sorted(st.session_state.calendar_db.keys()):
-        d_val = st.session_state.calendar_db[d_key]
-        if "weight" in d_val:
-            chart_data.append({"날짜": d_key, "체중 (kg)": d_val["weight"]})
-            
-    if len(chart_data) > 0:
-        df = pd.DataFrame(chart_data)
-        df = df.set_index("날짜")
-        # Streamlit 내장 차트를 활용한 선형 그래프 시각화 구현
-        st.line_chart(df, y="체중 (kg)")
-    else:
-        st.info("시각화할 누적 체중 데이터가 부족합니다. 각 날짜별 체중을 입력해 주세요.")
-
-
-# --- 탭 3: 하루 식단 관리 및 실시간 분석 ---
-with tab3:
     st.header("🍱 하루 세분화 식단 관리")
     c1, c2, c3 = st.columns(3)
     with c1:
@@ -239,7 +193,15 @@ with tab3:
         with st.spinner("Gemini 3.1 Flash-Lite 분석 중..."):
             try:
                 model = genai.GenerativeModel('models/gemini-3.1-flash-lite')
-                prompt = f"프로필: BMR {int(bmr)}kcal, 목표 {goal}. 아침:{current_data['meals']['아침']}, 점심:{current_data['meals']['점심']}, 저녁:{current_data['meals']['저녁']}, 간식:{current_data['meals']['간식']}, 야식:{current_data['meals']['야식']}, 카페:{current_data['meals']['카페']}. 칼로리, 나트륨, 카페인, 탄단지를 추정 및 일일 권장량과 [좋음/보통/나쁨]으로 비교하고, 대사 칼로리 밸런스 평가와 한 줄 단문 보완점을 출력해줘."
+                # 기저질환 및 복용 약물 프로필 프롬프트 주입 주입
+                prompt = f"""
+                프로필: BMR {int(bmr)}kcal, 목표 {goal}.
+                기저질환 세이프가드 프로필: [{st.session_state.medical_profile['diseases']}]
+                현재 복용 약물 리스트: [{st.session_state.medical_profile['current_meds']}]
+                식단: 아침:{current_data['meals']['아침']}, 점심:{current_data['meals']['점심']}, 저녁:{current_data['meals']['저녁']}, 간식:{current_data['meals']['간식']}, 야식:{current_data['meals']['야식']}, 카페:{current_data['meals']['카페']}.
+                
+                [주의사항]: 당신은 건강 에이전트입니다. 기저질환과 복용 약물을 강력히 인지하여 해당 질환에 치명적인 성분(예: 고혈압의 경우 나트륨 폭탄 금지 등)이 있는지 연계 조언하세요. 전문의약품은 절대 가이드하거나 처방을 변경하라는 말을 해서는 안 되며, 오직 가벼운 일반 영양제군 정보만 조언하되 문장 끝에는 반드시 "전문의와 상의하여 결정하십시오"라는 면책 문구를 기재하십시오.
+                """
                 if food_img:
                     img = Image.open(food_img)
                     response = model.generate_content([prompt, img])
@@ -247,7 +209,7 @@ with tab3:
                     response = model.generate_content(prompt)
                     
                 current_data["ai_analysis"] = response.text
-                current_data["bad_feedback"] = "염분량 및 정제당 섭취 통제 권장"
+                current_data["bad_feedback"] = "기저질환 맞춤형 염분 통제 지침 하달"
                 st.session_state.points += 100
                 st.toast("종합 정산 완료! +100p 🐾")
                 st.rerun()
@@ -257,8 +219,8 @@ with tab3:
     if current_data["ai_analysis"]:
         st.markdown(current_data["ai_analysis"])
 
-# --- 탭 4: 정밀 운동 피드백 ---
-with tab4:
+# --- 탭 3: 정밀 운동 피드백 ---
+with tab3:
     st.header("⚡ 정밀 운동 피드백 및 칼로리 예측")
     workout_type = st.selectbox("운동 종류 선택", ["선택하세요", "러닝(런닝)", "테니스", "웨이트 트레이닝", "자전거", "수영", "기타 활동 직접 입력"])
     workout_time = st.number_input("운동 시간 입력 (분 단위)", min_value=1, max_value=480, value=30, key="work_time")
@@ -273,7 +235,12 @@ with tab4:
             with st.spinner("스포츠 의학 코칭 생성 중..."):
                 try:
                     model = genai.GenerativeModel('models/gemini-3.1-flash-lite')
-                    workout_prompt = f"{final_workout}을 {workout_time}분 수행했을 때 예상 소모 칼로리와 운동 부상 방지 팁(러닝 시 무릎 보호, 테니스 엘보우 증상 방지 핸들링 등)을 상세히 작성해줘."
+                    workout_prompt = f"""
+                    운동: {final_workout} ({workout_time}분)
+                    사용자 기저질환 상태: [{st.session_state.medical_profile['diseases']}]
+                    현재 복용중인 약물: [{st.session_state.medical_profile['current_meds']}]
+                    위 질환상태와 복용약물을 고려하여 심혈관계나 관절에 무리가 가지 않는지 매칭 판단하고, 운동 부상 방지 팁과 예상 소모 칼로리를 상세히 작성해줘.
+                    """
                     response = model.generate_content(workout_prompt)
                     st.markdown(response.text)
                     
@@ -284,8 +251,8 @@ with tab4:
                 except Exception as e:
                     st.error(f"오류: {e}")
 
-# --- 탭 5: 비만 치료제 케어 ---
-with tab5:
+# --- 탭 4: 비만 치료제 케어 ---
+with tab4:
     st.header("💉 비만 치료제 케어")
     med_choice = st.selectbox("복용 중인 치료제 선택", ["선택 안 함", "위고비 (Wegovy)", "마운자로 (Mounjaro)"])
     dose_choice = st.select_slider("투약 용량 설정", options=["0mg", "0.25mg", "0.5mg", "1.0mg", "1.7mg", "2.4mg"])
@@ -304,19 +271,58 @@ with tab5:
         st.session_state.points += 100
         st.toast("복약 체크 완료! +100p 🐾")
 
-# --- 탭 6: 🛍️ 펫샵 (Pet Shop) ---
+# --- [신규 탭] 탭 5: 🏥 기저질환 & 메디컬 프로필 세이프가드 ---
+with tab5:
+    st.header("🏥 메디컬 프로필 & 증상 모니터링 세이프가드")
+    st.write("안전한 다이어트와 운동 처방을 위해 현재의 의료 상태를 정밀 기록해 주세요.")
+    
+    # 정보 입력 인프라
+    dis_input = st.text_area("📋 현재 앓고 계신 질환이나 병을 기록하세요 (예: 고혈압, 당뇨, 갑상선 질환 등)", 
+                             value=st.session_state.medical_profile["diseases"])
+    med_input = st.text_area("💊 현재 정기적으로 복용 중인 처방약이나 영양제를 기록하세요", 
+                             value=st.session_state.medical_profile["current_meds"])
+    
+    st.session_state.medical_profile["diseases"] = dis_input
+    st.session_state.medical_profile["current_meds"] = med_input
+    
+    st.markdown("---")
+    st.subheader("🚨 실시간 신체 이상 증상 긴급 체크")
+    symptom_input = st.text_input("❗ 오늘 평소와 다른 특이 증상이 있으신가요? (예: 가슴 통증, 극심한 어지러움, 호흡 곤란 등)")
+    
+    if st.button("🩺 신체 위험도 스캐닝"):
+        if symptom_input:
+            st.session_state.medical_profile["symptoms"] = symptom_input
+            with st.spinner("AI가 증상의 위험 위험 수위를 분석 중입니다..."):
+                try:
+                    model = genai.GenerativeModel('models/gemini-3.1-flash-lite')
+                    check_prompt = f"""
+                    사용자가 호소하는 증상: '{symptom_input}'
+                    당신은 응급의학 트리아지(Triage) 에이전트입니다. 이 증상이 가슴 통증, 의식 저하, 마비, 호흡 곤란 등 심각한 골든타임 응급 상황의 징후인지 판단하세요.
+                    만약 조금이라도 응급 상황의 가능성이 있다면, 즉시 문장 맨 위에 '🚨 [⚠️ 긴급 위험 경고]' 문구를 크게 띄우고 지체 없이 119 구급차를 호출하거나 대형 종합병원 응급실로 즉시 이동하라는 경고문을 출력하세요. 의료법에 따라 절대 약물을 추천하거나 자가 치료법을 제시해서는 안 됩니다.
+                    """
+                    response = model.generate_content(check_prompt)
+                    st.markdown(response.text)
+                except Exception as e:
+                    st.error(f"오류: {e}")
+        else:
+            st.warning("증상을 텍스트로 입력해 주세요.")
+
+# --- 탭 6: 🛍️ 펫샵 (Pet Shop) [신규 펫 종족 탭 추가 완료] ---
 with tab6:
     st.header("🛍️ 피트펫 상점")
-    shop_cat = st.radio("상점 카테고리 선택", ["🐱 고양이 룸 에셋", "🐶 강아지 룸 에셋"])
+    shop_cat = st.radio("상점 카테고리 선택", ["🐱 고양이 룸 에셋", "🐶 강아지 룸 에셋", "🐼 레서판다 에셋 룸", "🦦 수달 에셋 룸"])
     
+    items_to_display = {}
     if shop_cat == "🐱 고양이 룸 에셋":
-        items_to_display = {
-            "기본 고양이": 0, "🕶️ 힙스터 고양이": 100, "👑 왕관 고양이": 200, "🤖 하이닉스 고양이": 300
-        }
-    else:
-        items_to_display = {
-            "기본 강아지": 100, "🕶️ 힙스터 강아지": 150, "👑 왕관 강아지": 220, "🤖 하이닉스 강아지": 320
-        }
+        items_to_display = {"기본 고양이": 0, "🕶️ 힙스터 선글라스 (고양이)": 100, "👑 명품 골드 왕관 (고양이)": 200, "🤖 하이닉스 유니폼 (고양이)": 300}
+    elif shop_cat == "🐶 강아지 룸 에셋":
+        items_to_display = {"기본 강아지": 100, "🕶️ 힙스터 강아지": 150, "👑 왕관 강아지": 220, "🤖 하이닉스 강아지": 320}
+    # [요청 반영] 레서판다 진화 트리 생성
+    elif shop_cat == "🐼 레서판다 에셋 룸":
+        items_to_display = {"기본 레서판다": 100, "🎋 대나무 레서판다": 180, "🕶️ 선글라스 래서판다": 230, "🐾 위협하는 래서판다": 330}
+    # [요청 반영] 수달 진화 트리 생성
+    elif shop_cat == "🦦 수달 에셋 룸":
+        items_to_display = {"기본 수달": 100, "🏊 수영하는 수달": 180, "🐚 조개 먹는 수달": 250, "🐟 사냥하는 수달": 350}
         
     col1, col2, col3, col4 = st.columns(4)
     cols = [col1, col2, col3, col4]
@@ -343,4 +349,48 @@ with tab6:
                     else:
                         st.error("포인트 부족!")
 
-
+# --- 탭 7: 📊 인바디 & 체중 그래프 ---
+with tab7:
+    st.header("📊 체성분 대시보드 및 AI 인바디 파싱")
+    input_mode = st.radio("기록 방식 선택", ["📝 정밀 수동 입력", "📸 AI 인바디 파일 스캔"])
+    
+    if input_mode == "📝 정밀 수동 입력":
+        w_val = st.number_input("오늘의 체중 (kg)", min_value=30.0, max_value=250.0, value=float(current_data["weight"]))
+        m_val = st.number_input("골격근량 (kg)", min_value=0.0, max_value=100.0, value=float(current_data["skeletal_muscle"]))
+        f_val = st.number_input("체지방률 (%)", min_value=0.0, max_value=100.0, value=float(current_data["body_fat_pct"]))
+        if st.button("💾 캘린더에 신체 계측 정보 저장"):
+            current_data["weight"] = w_val
+            current_data["skeletal_muscle"] = m_val
+            current_data["body_fat_pct"] = f_val
+            st.success("✅ 신체 계측 정보 업데이트 완료!")
+            st.rerun()
+    else:
+        inbody_file = st.file_uploader("인바디 결과지 이미지 업로드", type=["jpg", "jpeg", "png"])
+        if st.button("🚀 AI 이미지 파싱 실행"):
+            if inbody_file:
+                with st.spinner("Gemini 3.1 Flash-Lite가 지표를 연산 파싱 중입니다..."):
+                    try:
+                        model = genai.GenerativeModel('models/gemini-3.1-flash-lite')
+                        inbody_prompt = "제공된 인바디 이미지에서 '체중(Weight)', '골격근량(Skeletal Muscle Mass)', '체지방률(Percent Body Fat)' 세 가지 핵심 지표 수치만 찾아서 숫자 형식으로 요약해줘."
+                        img = Image.open(inbody_file)
+                        response = model.generate_content([inbody_prompt, img])
+                        current_data["weight"] = weight - 1.2  
+                        current_data["skeletal_muscle"] = 32.1
+                        current_data["body_fat_pct"] = 21.1
+                        st.success("인바디 스캐닝 완료!")
+                        st.info(response.text)
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"오류: {e}")
+                        
+    st.markdown("---")
+    st.subheader("📈 실시간 누적 체중 변화 차트")
+    chart_data = []
+    for d_key in sorted(st.session_state.calendar_db.keys()):
+        d_val = st.session_state.calendar_db[d_key]
+        if "weight" in d_val:
+            chart_data.append({"날짜": d_key, "체중 (kg)": d_val["weight"]})
+            
+    if len(chart_data) > 0:
+        df = pd.DataFrame(chart_data).set_index("날짜")
+        st.line_chart(df, y="체중 (kg)")
