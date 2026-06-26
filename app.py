@@ -131,7 +131,7 @@ elif "수달" in st.session_state.equipped:
     emoji_avatar = "🦦"
     if "수영하는" in st.session_state.equipped: image_file = "otter_swim.png"
     elif "조개 먹는" in st.session_state.equipped: image_file = "otter_clam.png"
-    elif "사냥하는" in st.session_state.equipped: image_file = "otter_hunt.png"
+    elif "가족" in st.session_state.equipped: image_file = "otter_family.png"
     else: image_file = "otter_base.png"
 
 if os.path.exists(image_file):
@@ -401,7 +401,7 @@ with tab7:
     elif shop_cat == "🐼 레서판다 에셋 룸":
         items_to_display = {"기본 레서판다": 100, "🎋 대나무 레서판다": 180, "🕶️ 선글라스 래서판다": 230, "🐾 위협하는 래서판다": 330}
     elif shop_cat == "🦦 수달 에셋 룸":
-        items_to_display = {"기본 수달": 100, "🏊 수영하는 수달": 180, "🐚 조개 먹는 수달": 250, "🐟 사냥하는 수달": 350}
+        items_to_display = {"기본 수달": 100, "🏊 수영하는 수달": 180, "🐚 조개 먹는 수달": 250, "🐟 가족 수달": 350}
         
     col1, col2, col3, col4 = st.columns(4)
     cols = [col1, col2, col3, col4]
