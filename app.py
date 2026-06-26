@@ -226,30 +226,25 @@ with tab2:
                         img = Image.open(inbody_file)
                         response = model.generate_content([inbody_prompt, img])
                         
+                       
                         # AI 추출 수치 반영 (데모용 고정 데이터)
                         scanned_weight = 68.5  
                         scanned_muscle = 32.1
                         scanned_fat_pct = 21.1
-                        
-                        # 전역 변수 및 달력 DB에 안전하게 주입
-                        # AI 추출 수치 반영 (데모용 고정 데이터)
-                      scanned_weight = 68.5  
-                      scanned_muscle = 32.1
-                      scanned_fat_pct = 21.1
 
-                      # 🚨 [안전한 강제 주입]: 달력 데이터베이스 내부 구조 우선 갱신
-                      st.session_state.calendar_db[date_key]["weight"] = scanned_weight  
-                      st.session_state.calendar_db[date_key]["skeletal_muscle"] = scanned_muscle
-                      st.session_state.calendar_db[date_key]["body_fat_pct"] = scanned_fat_pct
+                        # 🚨 [안전한 강제 주입]: 달력 데이터베이스 내부 구조 우선 갱신
+                        st.session_state.calendar_db[date_key]["weight"] = scanned_weight  
+                        st.session_state.calendar_db[date_key]["skeletal_muscle"] = scanned_muscle
+                        st.session_state.calendar_db[date_key]["body_fat_pct"] = scanned_fat_pct
 
-                      # 전역 현재 무게 세션 값도 업데이트
-                      st.session_state.current_weight = scanned_weight
+                        # 전역 현재 무게 세션 값도 업데이트
+                        st.session_state.current_weight = scanned_weight
 
-                      st.success("🎉 AI 인바디 스캔 데이터 전사 동기화 완료!")
-                      st.info(response.text)
+                        st.success("🎉 AI 인바디 스캔 데이터 전사 동기화 완료!")
+                        st.info(response.text)
 
-                      # 컴포넌트 즉시 새로고침 (오류 없이 깨끗하게 반영됩니다)
-                      st.rerun() 
+                        # 컴포넌트 즉시 새로고침 (오류 없이 깨끗하게 반영됩니다)
+                        st.rerun() 
                         
                     except Exception as e:
                         st.error(f"오류: {e}")
