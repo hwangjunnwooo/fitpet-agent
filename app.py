@@ -202,19 +202,19 @@ with tab2:
     input_mode = st.radio("기록 방식 선택", ["📝 정밀 수동 입력", "📸 AI 인바디 파일 스캔"])
     
     if input_mode == "📝 정밀 수동 입력":
-        # 🚨 인바디 탭의 체중 입력창의 value도 세션 상태와 완벽 결합
-        w_val = st.number_input("오늘의 체중 (kg)", min_value=30.0, max_value=250.0, value=float(st.session_state.current_weight))
-        m_val = st.number_input("골격근량 (kg)", min_value=0.0, max_value=100.0, value=float(current_data.get("skeletal_muscle", 31.5)))
-        f_val = st.number_input("체지방률 (%)", min_value=0.0, max_value=100.0, value=float(current_data.get("body_fat_pct", 22.0)))
+        # 🚨 [핵심 수정]: value의 기준을 달력 DB(current_data)에서 직접 실시간 참조하도록 바꿉니다.
+        # 이렇게 해야 AI 파싱이 DB를 바꿨을 때 수동 입력창의 숫자도 AI 값으로 같이 바뀝니다.
+        w_val = st.number_input("오늘의 체중 (kg)", min_value=30.0, max_value=250.0, value=float(st.session_state.calendar_db[date_key]["weight"]))
+        m_val = st.number_input("골격근량 (kg)", min_value=0.0, max_value=100.0, value=float(st.session_state.calendar_db[date_key]["skeletal_muscle"]))
+        f_val = st.number_input("체지방률 (%)", min_value=0.0, max_value=100.0, value=float(st.session_state.calendar_db[date_key]["body_fat_pct"]))
         
         if st.button("💾 캘린더에 신체 계측 정보 저장"):
-            # 저장 버튼을 누르면 세션 상태와 달력 DB를 동시에 영구 동기화
             st.session_state.current_weight = w_val
             st.session_state.calendar_db[date_key]["weight"] = w_val
             st.session_state.calendar_db[date_key]["skeletal_muscle"] = m_val
             st.session_state.calendar_db[date_key]["body_fat_pct"] = f_val
             st.success("✅ 신체 계측 정보가 대시보드 캘린더와 사이드바에 실시간 동기화되었습니다!")
-            st.rerun() 
+            st.rerun()
     else:
         inbody_file = st.file_uploader("인바디 결과지 이미지 업로드", type=["jpg", "jpeg", "png"])
         if st.button("🚀 AI 이미지 파싱 실행"):
