@@ -70,11 +70,11 @@ emoji_avatar = "🐱"
 
 if st.session_state.equipped == "기본 고양이":
     image_file = "cat_base.png"; emoji_avatar = "🐱"
-elif st.session_state.equipped == "🕶️ 힙스터 선글라스 (고양이)":
+elif st.session_state.equipped == "🕶️ 힙스터 고양이":
     image_file = "cat_sunglasses.png"; emoji_avatar = "🕶️🐱"
-elif st.session_state.equipped == "👑 명품 골드 왕관 (고양이)":
+elif st.session_state.equipped == "👑 왕관 고양이":
     image_file = "cat_crown.png"; emoji_avatar = "👑🐱"
-elif st.session_state.equipped == "🤖 하이닉스 유니폼 (고양이)":
+elif st.session_state.equipped == "🤖 하이닉스 고양이":
     image_file = "cat_suit.png"; emoji_avatar = "🤖🐱"
 elif st.session_state.equipped == "기본 강아지":
     image_file = "dog_base.png"; emoji_avatar = "🐶"
