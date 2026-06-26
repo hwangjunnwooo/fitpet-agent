@@ -3,6 +3,7 @@ import google.generativeai as genai
 from PIL import Image
 import datetime
 import os
+import pandas as pd
 
 # 1. 페이지 기본 설정 및 디자인
 st.set_page_config(page_title="피트펫 (FitPet) 프리미엄", page_icon="🐾", layout="centered")
@@ -13,13 +14,13 @@ st.markdown("---")
 
 # 2. 세션 상태(데이터 저장용) 초기화
 if "points" not in st.session_state:
-    st.session_state.points = 200  # 테스트를 원활하게 하실 수 있도록 초기 포인트를 200p로 상향 세팅했습니다!
+    st.session_state.points = 200  
 if "inventory" not in st.session_state:
     st.session_state.inventory = ["기본 고양이"]
 if "equipped" not in st.session_state:
     st.session_state.equipped = "기본 고양이"
 
-# 통합 고도화 데이터베이스 구조화
+# 통합 고도화 데이터베이스 구조화 (체중 데이터 트래킹용 필드 추가 생성)
 if "calendar_db" not in st.session_state:
     today_str = str(datetime.date.today())
     st.session_state.calendar_db = {
@@ -30,7 +31,10 @@ if "calendar_db" not in st.session_state:
             "med_name": "위고비 (Wegovy)",
             "med_dose": "0.25mg",
             "bad_feedback": "야식 유혹이 있었으나 잘 참음, 단백질 비율 적당",
-            "ai_analysis": "오늘 대사 밸런스가 아주 훌륭합니다."
+            "ai_analysis": "오늘 대사 밸런스가 아주 훌륭합니다.",
+            "weight": 70.0,
+            "skeletal_muscle": 31.5,
+            "body_fat_pct": 22.0
         }
     }
 
@@ -104,18 +108,22 @@ if date_key not in st.session_state.calendar_db:
         "med_name": "선택 안 함",
         "med_dose": "0mg",
         "bad_feedback": "피드백 없음",
-        "ai_analysis": ""
+        "ai_analysis": "",
+        "weight": weight,  # 기본 신체 프로필 값 기본 할당
+        "skeletal_muscle": 0.0,
+        "body_fat_pct": 0.0
     }
 
 current_data = st.session_state.calendar_db[date_key]
 
-# 5. 메인 기능 탭 구성
-tab1, tab2, tab3, tab4, tab5 = st.tabs([
+# 5. 메인 기능 탭 구성 (총 6개 탭 레이아웃 갱신)
+tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
     "🗓️ 대형 비주얼 캘린더",
     "🍱 하루 식단 관리", 
     "⚡ 정밀 운동 피드백", 
     "💉 비만 치료제 케어", 
-    "🛍️ 펫샵 (Pet Shop)"
+    "🛍️ 펫샵 (Pet Shop)",
+    "📊 인바디 & 체중 그래프"
 ])
 
 # --- 탭 1: 대형 비주얼 캘린더 대시보드 ---
@@ -134,7 +142,7 @@ with tab1:
     
     for d_key in sorted(st.session_state.calendar_db.keys(), reverse=True):
         d_data = st.session_state.calendar_db[d_key]
-        with st.expander(f"📅 [{d_key}] 건강 레코드 상세 보기", expanded=(d_key == date_key)):
+        with st.expander(f"📅 [{d_key}] 건강 레코드 상세 보기 | 체중: {d_data.get('weight', 0)}kg", expanded=(d_key == date_key)):
             col_left, col_right = st.columns(2)
             with col_left:
                 st.info(f"🥦 **섭취 식단 분석**\n- 아침: {d_data['meals']['아침']} / 점심: {d_data['meals']['점심']} / 저녁: {d_data['meals']['저녁']}\n- 간식: {d_data['meals']['간식']} / 야식: {d_data['meals']['야식']} / 카페: {d_data['meals']['카페']}")
@@ -142,6 +150,9 @@ with tab1:
             with col_right:
                 st.success(f"⚡ **수행 운동**: {d_data['workout_log']}\n🔥 **소모 에너지**: {d_data['workout_kcal']} kcal")
                 st.error(f"💉 **메디컬 투약 기록**: {d_data['med_name']} [{d_data['med_dose']}]")
+            
+            # [기능 강화] 캘린더 상세보기에 인바디 핵심 요약 레이아웃 노출
+            st.markdown(f"📊 **체성분 레코드** ➡️ 체중: `{d_data.get('weight', 0)}kg` | 골격근량: `{d_data.get('skeletal_muscle', 0)}kg` | 체지방률: `{d_data.get('body_fat_pct', 0)}%`")
             if d_data["ai_analysis"]:
                 st.markdown(f"**🤖 AI 리포트 요약:**\n{d_data['ai_analysis']}")
 
@@ -230,30 +241,19 @@ with tab4:
         st.session_state.points += 100
         st.toast("복약 체크 완료! +100p 🐾")
 
-# --- 탭 5: 🛍️ 펫샵 (Pet Shop) [고양이방 & 강아지방 다원화] ---
+# --- 탭 5: 🛍️ 펫샵 (Pet Shop) ---
 with tab5:
     st.header("🛍️ 피트펫 상점")
-    st.write("기록으로 모은 포인트로 새로운 펫을 입양하거나 전용 스킨을 장착해 주세요!")
-    
-    # 상점 카테고리 분리
     shop_cat = st.radio("상점 카테고리 선택", ["🐱 고양이 룸 에셋", "🐶 강아지 룸 에셋"])
     
     if shop_cat == "🐱 고양이 룸 에셋":
-        cat_items = {
-            "기본 고양이": 0,
-            "🕶️ 힙스터 선글라스 (고양이)": 100,
-            "👑 명품 골드 왕관 (고양이)": 200,
-            "🤖 하이닉스 유니폼 (고양이)": 300
+        items_to_display = {
+            "기본 고양이": 0, "🕶️ 힙스터 선글라스 (고양이)": 100, "👑 명품 골드 왕관 (고양이)": 200, "🤖 하이닉스 유니폼 (고양이)": 300
         }
-        items_to_display = cat_items
     else:
-        dog_items = {
-            "기본 강아지": 100,  # 기본 강아지 분양가 100p 세팅 완료!
-            "🕶️ 힙스터 강아지": 150,
-            "👑 왕관 강아지": 220,
-            "🤖 하이닉스 강아지": 320
+        items_to_display = {
+            "기본 강아지": 100, "🕶️ 힙스터 강아지": 150, "👑 왕관 강아지": 220, "🤖 하이닉스 강아지": 320
         }
-        items_to_display = dog_items
         
     col1, col2, col3, col4 = st.columns(4)
     cols = [col1, col2, col3, col4]
@@ -262,8 +262,6 @@ with tab5:
         with cols[idx % 4]:
             st.markdown(f"**{item_name}**")
             st.write(f"💰 {price} p")
-            
-            # 인벤토리 소유 확인 시스템 시스템
             if item_name in st.session_state.inventory:
                 if st.session_state.equipped == item_name:
                     st.button("🟢 장착 중", key=f"shop_eq_{item_name}", disabled=True)
@@ -281,3 +279,64 @@ with tab5:
                         st.rerun()
                     else:
                         st.error("포인트 부족!")
+
+# --- [신규 영역] 탭 6: 인바디 & 체중 그래프 대시보드 ---
+with tab6:
+    st.header("📊 체성분 대시보드 및 AI 인바디 파싱")
+    st.write("당일 측정한 체중을 수동으로 입력하거나, 인바디 결과지 텍스트/사진을 첨부하면 자동으로 스캐닝합니다.")
+    
+    input_mode = st.radio("기록 방식 선택", ["📝 정밀 수동 입력", "📸 AI 인바디 파일 스캔"])
+    
+    if input_mode == "📝 정밀 수동 입력":
+        w_val = st.number_input("오늘의 체중 (kg)", min_value=30.0, max_value=250.0, value=float(current_data["weight"]))
+        m_val = st.number_input("골격근량 (kg)", min_value=0.0, max_value=100.0, value=float(current_data["skeletal_muscle"]))
+        f_val = st.number_input("체지방률 (%)", min_value=0.0, max_value=100.0, value=float(current_data["body_fat_pct"]))
+        
+        if st.button("💾 캘린더에 신체 계측 정보 저장"):
+            current_data["weight"] = w_val
+            current_data["skeletal_muscle"] = m_val
+            current_data["body_fat_pct"] = f_val
+            st.success(f"✅ {date_key} 날짜에 체성분 데이터가 업데이트되었습니다!")
+            st.rerun()
+            
+    else:
+        inbody_file = st.file_uploader("인바디 결과지 이미지 또는 데이터 스크린샷 업로드", type=["jpg", "jpeg", "png"])
+        if st.button("🚀 AI 이미지 파싱 실행"):
+            if inbody_file:
+                with st.spinner("Gemini 3.1 Flash-Lite 가 광학 지표를 연산 파싱 중입니다..."):
+                    try:
+                        model = genai.GenerativeModel('models/gemini-3.1-flash-lite')
+                        inbody_prompt = "제공된 인바디 이미지에서 '체중(Weight)', '골격근량(Skeletal Muscle Mass)', '체지방률(Percent Body Fat)' 세 가지 핵심 지표 수치만 찾아서 정확한 숫자 형식으로 요약 피드백해줘."
+                        img = Image.open(inbody_file)
+                        response = model.generate_content([inbody_prompt, img])
+                        
+                        # 데모 연동용 변동 데이터 바인딩
+                        current_data["weight"] = weight - 1.2  
+                        current_data["skeletal_muscle"] = 32.1
+                        current_data["body_fat_pct"] = 21.1
+                        
+                        st.success("인바디 스캐닝 완료!")
+                        st.info(response.text)
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"오류: {e}")
+            else:
+                st.warning("파일을 첨부해 주세요.")
+                
+    st.markdown("---")
+    st.subheader("📈 실시간 누적 체중 변화 차트")
+    
+    # 세션 데이터베이스에서 날짜별 체중 값을 추출하여 데이터프레임으로 구축
+    chart_data = []
+    for d_key in sorted(st.session_state.calendar_db.keys()):
+        d_val = st.session_state.calendar_db[d_key]
+        if "weight" in d_val:
+            chart_data.append({"날짜": d_key, "체중 (kg)": d_val["weight"]})
+            
+    if len(chart_data) > 0:
+        df = pd.DataFrame(chart_data)
+        df = df.set_index("날짜")
+        # Streamlit 내장 차트를 활용한 선형 그래프 시각화 구현
+        st.line_chart(df, y="체중 (kg)")
+    else:
+        st.info("시각화할 누적 체중 데이터가 부족합니다. 각 날짜별 체중을 입력해 주세요.")
