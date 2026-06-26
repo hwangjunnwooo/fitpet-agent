@@ -20,11 +20,22 @@ if "inventory" not in st.session_state:
 if "equipped" not in st.session_state:
     st.session_state.equipped = "기본 고양이"
 
-# [버그 수정] 최초 1회만 고정 데이터 세팅, 이후엔 세션에 누적 보존
+# 전역 기저질환 프로필 세션 초기화
+if "medical_profile" not in st.session_state:
+    st.session_state.medical_profile = {
+        "diseases": "",
+        "current_meds": "",
+        "symptoms": ""
+    }
+
+# 3. 날짜 제어 인프라 선행 정의 (사이드바 연동을 위해 맨 위로 이동)
+if "selected_date_str" not in st.session_state:
+    st.session_state.selected_date_str = str(datetime.date.today())
+
+# 통합 고도화 데이터베이스 구조화 (최초 1회만 기본 샘플 세팅)
 if "calendar_db" not in st.session_state:
-    today_str = str(datetime.date.today())
     st.session_state.calendar_db = {
-        today_str: {
+        st.session_state.selected_date_str: {
             "meals": {"아침": "닭가슴살 샐러드", "점심": "일반식", "저녁": "소고기", "간식": "", "야식": "", "카페": "아메리카노"},
             "workout_log": "러닝 30분",
             "workout_kcal": 240,
@@ -38,35 +49,55 @@ if "calendar_db" not in st.session_state:
         }
     }
 
-# 기저질환 및 복용 약물 프로필 세션 초기화
-if "medical_profile" not in st.session_state:
-    st.session_state.medical_profile = {
-        "diseases": "",
-        "current_meds": "",
-        "symptoms": ""
+date_key = st.session_state.selected_date_str
+
+# 새로운 날짜 선택 시 딕셔너리 구조가 깨지지 않도록 안전망 생성
+if date_key not in st.session_state.calendar_db:
+    st.session_state.calendar_db[date_key] = {
+        "meals": {"아침": "", "점심": "", "저녁": "", "간식": "", "야식": "", "카페": ""},
+        "workout_log": "기록 없음",
+        "workout_kcal": 0,
+        "med_name": "선택 안 함",
+        "med_dose": "0mg",
+        "bad_feedback": "피드백 없음",
+        "ai_analysis": "",
+        "weight": 70.0,  # 전역 표준 기본값 초기화
+        "skeletal_muscle": 31.5,
+        "body_fat_pct": 22.0
     }
 
-# Gemini API 키 설정
-try:
-    genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
-except Exception as e:
-    st.warning("API Key가 설정되지 않았습니다. Secrets 설정을 확인해 주세요.")
+# --- 💡 [핵심 버그 수정 포인트] 양방향 연동을 위한 세션 전용 키 바인딩 ---
+# 현재 선택된 날짜의 몸무게 값을 세션 고유 State에 실시간 동기화
+if "current_weight" not in st.session_state or st.sidebar:
+    st.session_state.current_weight = float(st.session_state.calendar_db[date_key]["weight"])
 
-# 3. 사이드바 - 개인 신체 정보 입력 및 기초대사량(BMR) 계산
+# 4. 사이드바 - 개인 신체 정보 입력 및 기초대사량(BMR) 계산
 st.sidebar.header("👤 개인 신체 프로필 입력")
 gender = st.sidebar.radio("성별", ["남성", "여성"])
 age = st.sidebar.number_input("나이 (세)", min_value=1, max_value=120, value=25)
 height = st.sidebar.number_input("키 (cm)", min_value=100.0, max_value=250.0, value=175.0)
 
-# [버그 수정] 날짜 제어 전 상단에 배치하여 동기화 끊김 방지
-default_weight = st.sidebar.number_input("기본 몸무게 (kg)", min_value=30.0, max_value=250.0, value=70.0)
+# 🚨 사이드바 몸무게 입력창의 value를 세션 상태와 완벽 결합 (양방향 연동의 핵심)
+sidebar_weight = st.sidebar.number_input(
+    "몸무게 (kg)", 
+    min_value=30.0, 
+    max_value=250.0, 
+    value=st.session_state.current_weight,
+    key="sidebar_weight_input"
+)
+
+# 사이드바에서 사용자가 숫자를 바꾸면 세션과 달력 DB에 즉시 전사 반영
+if sidebar_weight != st.session_state.current_weight:
+    st.session_state.current_weight = sidebar_weight
+    st.session_state.calendar_db[date_key]["weight"] = sidebar_weight
+
 goal = st.sidebar.selectbox("나의 건강 목표", ["다이어트 (체중 감량)", "벌크업 (근육량 증가)", "유지 및 건강 관리"])
 
 # Mifflin-St Jeor 기초대사량 계산 공식
 if gender == "남성":
-    bmr = 10 * default_weight + 6.25 * height - 5 * age + 5
+    bmr = 10 * st.session_state.current_weight + 6.25 * height - 5 * age + 5
 else:
-    bmr = 10 * default_weight + 6.25 * height - 5 * age - 161
+    bmr = 10 * st.session_state.current_weight + 6.25 * height - 5 * age - 161
 
 st.sidebar.markdown(f"### 🧬 나의 기초 대사량(BMR)\n`{int(bmr)} kcal / 일`")
 
@@ -113,27 +144,16 @@ else:
     st.sidebar.markdown(f"<div style='font-size: 80px; text-align: center;'>{emoji_avatar}</div>", unsafe_allow_html=True)
     st.sidebar.info(f"💡 {st.session_state.equipped}와(과) 함께 트레이닝 중!")
 
-# 4. 날짜 선택 제어 인프라
+# 5. 작업 기준일 선택창 렌더링
 st.markdown("### 📅 작업 및 조회 기준일 선택")
 selected_date = st.date_input("데이터를 입력하거나 조회할 날짜를 선택하세요", datetime.date.today())
-date_key = str(selected_date)
+if str(selected_date) != st.session_state.selected_date_str:
+    st.session_state.selected_date_str = str(selected_date)
+    st.rerun()
 
-# [버그 수정 핵심] 초기 덮어쓰기 현상을 차단하고 완벽하게 데이터를 독립 생성하도록 리팩토링
-if date_key not in st.session_state.calendar_db:
-    st.session_state.calendar_db[date_key] = {
-        "meals": {"아침": "", "점심": "", "저녁": "", "간식": "", "야식": "", "카페": ""},
-        "workout_log": "기록 없음",
-        "workout_kcal": 0,
-        "med_name": "선택 안 함",
-        "med_dose": "0mg",
-        "bad_feedback": "피드백 없음",
-        "ai_analysis": "",
-        "weight": float(default_weight),  # 사이드바 입력값을 초기값으로만 사용
-        "skeletal_muscle": 31.5,
-        "body_fat_pct": 22.0
-    }
+current_data = st.session_state.calendar_db[date_key]
 
-# 5. 메인 기능 탭 구성
+# 6. 메인 기능 탭 구성
 tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
     "🗓️ 대형 비주얼 캘린더",
     "📊 인바디 & 체중 그래프",  
@@ -149,13 +169,12 @@ with tab1:
     st.header("🗓️ 헬스 앤 웰니스 비주얼 달력")
     st.markdown(f"#### 🎯 {date_key} 건강 요약 통계")
     
-    # 캘린더 상단 헤더도 해당 날짜에 저장된 정확한 실시간 데이터 데이터 표출 표출
-    kpi_weight = st.session_state.calendar_db[date_key].get("weight", default_weight)
+    kpi_weight = current_data.get("weight", 70.0)
     
     kpi_bmr, kpi_work, kpi_med = st.columns(3)
     kpi_bmr.metric("당일 기록된 체중", f"{kpi_weight} kg")
-    kpi_work.metric("운동 소모 칼로리", f"{st.session_state.calendar_db[date_key]['workout_kcal']} kcal")
-    kpi_med.metric("치료제 투약 상태", f"{st.session_state.calendar_db[date_key]['med_name']} ({st.session_state.calendar_db[date_key]['med_dose']})")
+    kpi_work.metric("운동 소모 칼로리", f"{current_data['workout_kcal']} kcal")
+    kpi_med.metric("치료제 투약 상태", f"{current_data['med_name']} ({current_data['med_dose']})")
     
     st.markdown("---")
     st.subheader("📊 일자별 타임라인 성적표")
@@ -163,8 +182,7 @@ with tab1:
     for d_key in sorted(st.session_state.calendar_db.keys(), reverse=True):
         d_data = st.session_state.calendar_db[d_key]
         
-        # [해결 완료] d_data.get('weight') 구조가 리셋되지 않고 실시간 매칭 노출 노출
-        with st.expander(f"📅 [{d_key}] 건강 레코드 상세 보기 | 체중: {d_data.get('weight', default_weight)}kg", expanded=(d_key == date_key)):
+        with st.expander(f"📅 [{d_key}] 건강 레코드 상세 보기 | 체중: {d_data.get('weight', 70.0)}kg", expanded=(d_key == date_key)):
             col_left, col_right = st.columns(2)
             with col_left:
                 st.info(f"🥦 **섭취 식단 분석**\n- 아침: {d_data['meals']['아침']} / 점심: {d_data['meals']['점심']} / 저녁: {d_data['meals']['저녁']}\n- 간식: {d_data['meals']['간식']} / 야식: {d_data['meals']['야식']} / 카페: {d_data['meals']['카페']}")
@@ -173,7 +191,7 @@ with tab1:
                 st.success(f"⚡ **수행 운동**: {d_data['workout_log']}\n🔥 **소모 에너지**: {d_data['workout_kcal']} kcal")
                 st.error(f"💉 **메디컬 투약 기록**: {d_data['med_name']} [{d_data['med_dose']}]")
             
-            st.markdown(f"📊 **체성분 레코드** ➡️ 체중: `{d_data.get('weight', default_weight)}kg` | 골격근량: `{d_data.get('skeletal_muscle', 31.5)}kg` | 체지방률: `{d_data.get('body_fat_pct', 22.0)}%`")
+            st.markdown(f"📊 **체성분 레코드** ➡️ 체중: `{d_data.get('weight', 70.0)}kg` | 골격근량: `{d_data.get('skeletal_muscle', 31.5)}kg` | 체지방률: `{d_data.get('body_fat_pct', 22.0)}%`")
             if d_data["ai_analysis"]:
                 st.markdown(f"**🤖 AI 리포트 요약:**\n{d_data['ai_analysis']}")
 
@@ -185,18 +203,19 @@ with tab2:
     input_mode = st.radio("기록 방식 선택", ["📝 정밀 수동 입력", "📸 AI 인바디 파일 스캔"])
     
     if input_mode == "📝 정밀 수동 입력":
-        # 현재 선택된 날짜에 들어있는 기존 데이터값을 실시간 화면 UI에 바인딩
-        w_val = st.number_input("오늘의 체중 (kg)", min_value=30.0, max_value=250.0, value=float(st.session_state.calendar_db[date_key].get("weight", default_weight)))
-        m_val = st.number_input("골격근량 (kg)", min_value=0.0, max_value=100.0, value=float(st.session_state.calendar_db[date_key].get("skeletal_muscle", 31.5)))
-        f_val = st.number_input("체지방률 (%)", min_value=0.0, max_value=100.0, value=float(st.session_state.calendar_db[date_key].get("body_fat_pct", 22.0)))
+        # 🚨 인바디 탭의 체중 입력창의 value도 세션 상태와 완벽 결합
+        w_val = st.number_input("오늘의 체중 (kg)", min_value=30.0, max_value=250.0, value=float(st.session_state.current_weight), key="inbody_weight_input")
+        m_val = st.number_input("골격근량 (kg)", min_value=0.0, max_value=100.0, value=float(current_data.get("skeletal_muscle", 31.5)))
+        f_val = st.number_input("체지방률 (%)", min_value=0.0, max_value=100.0, value=float(current_data.get("body_fat_pct", 22.0)))
         
         if st.button("💾 캘린더에 신체 계측 정보 저장"):
-            # 세션 캘린더 동적 딕셔너리에 영구 세이브 및 고정
+            # 저장 버튼을 누르면 세션 상태와 달력 DB를 동시에 영구 동기화
+            st.session_state.current_weight = w_val
             st.session_state.calendar_db[date_key]["weight"] = w_val
             st.session_state.calendar_db[date_key]["skeletal_muscle"] = m_val
             st.session_state.calendar_db[date_key]["body_fat_pct"] = f_val
-            st.success("✅ 신체 계측 정보가 대시보드 캘린더에 고정 완료되었습니다!")
-            st.rerun() # 전체 새로고침하여 1번 탭의 뷰를 즉시 갱신
+            st.success("✅ 신체 계측 정보가 대시보드 캘린더와 사이드바에 실시간 동기화되었습니다!")
+            st.rerun() 
     else:
         inbody_file = st.file_uploader("인바디 결과지 이미지 업로드", type=["jpg", "jpeg", "png"])
         if st.button("🚀 AI 이미지 파싱 실행"):
@@ -208,8 +227,10 @@ with tab2:
                         img = Image.open(inbody_file)
                         response = model.generate_content([inbody_prompt, img])
                         
-                        # AI 자동 파싱 임시 시뮬레이션 고정 데이터 주입
-                        st.session_state.calendar_db[date_key]["weight"] = 68.5  
+                        # AI 스캔 완료 시에도 몸무게 동기화
+                        scanned_weight = 68.5
+                        st.session_state.current_weight = scanned_weight
+                        st.session_state.calendar_db[date_key]["weight"] = scanned_weight  
                         st.session_state.calendar_db[date_key]["skeletal_muscle"] = 32.1
                         st.session_state.calendar_db[date_key]["body_fat_pct"] = 21.1
                         
@@ -252,7 +273,7 @@ with tab3:
             try:
                 model = genai.GenerativeModel('models/gemini-3.1-flash-lite')
                 prompt = f"""
-                프로필: BMR {int(bmr)}kcal, 목표 {goal}.
+                프로필: BMR {int(bmr)}kcal, 목표 {goal}. 몸무게 {st.session_state.current_weight}kg
                 기저질환 세이프가드 프로필: [{st.session_state.medical_profile['diseases']}]
                 현재 복용 약물 리스트: [{st.session_state.medical_profile['current_meds']}]
                 식단: 아침:{st.session_state.calendar_db[date_key]['meals']['아침']}, 점심:{st.session_state.calendar_db[date_key]['meals']['점심']}, 저녁:{st.session_state.calendar_db[date_key]['meals']['저녁']}, 간식:{st.session_state.calendar_db[date_key]['meals']['간식']}, 야식:{st.session_state.calendar_db[date_key]['meals']['야식']}, 카페:{st.session_state.calendar_db[date_key]['meals']['카페']}.
@@ -290,90 +311,4 @@ with tab4:
             with st.spinner("스포츠 의학 코칭 생성 중..."):
                 try:
                     model = genai.GenerativeModel('models/gemini-3.1-flash-lite')
-                    workout_prompt = f"운동: {final_workout} ({workout_time}분), 질환: {st.session_state.medical_profile['diseases']}. 주의사항과 소모 칼로리를 알려줘."
-                    response = model.generate_content(workout_prompt)
-                    st.markdown(response.text)
-                    
-                    st.session_state.calendar_db[date_key]["workout_log"] = f"{final_workout} {workout_time}분"
-                    st.session_state.calendar_db[date_key]["workout_kcal"] = workout_time * 8
-                    st.session_state.points += 100
-                    st.toast("운동 기록 완료! +100p 🐾")
-                except Exception as e:
-                    st.error(f"오류: {e}")
-
-# --- 탭 5: 비만 치료제 케어 ---
-with tab5:
-    st.header("💉 비만 치료제 케어")
-    med_choice = st.selectbox("복용 중인 치료제 선택", ["선택 안 함", "위고비 (Wegovy)", "마운자로 (Mounjaro)"])
-    dose_choice = st.select_slider("투약 용량 설정", options=["0mg", "0.25mg", "0.5mg", "1.0mg", "1.7mg", "2.4mg"])
-    side_1 = st.checkbox("메스꺼움 / 구토")
-    side_2 = st.checkbox("설사 / 변비")
-    side_3 = st.checkbox("심한 복통")
-    
-    if st.button("복용 기록 완료"):
-        st.session_state.calendar_db[date_key]["med_name"] = med_choice
-        st.session_state.calendar_db[date_key]["med_dose"] = dose_choice
-        if med_choice != "선택 안 함" and (side_1 or side_2 or side_3):
-            st.session_state.calendar_db[date_key]["bad_feedback"] = f"투약 부작용 발생 ({dose_choice})"
-            st.error("⚠️ 부작용 신호 포착. 처방의와 상담하세요.")
-        else:
-            st.success("✅ 안전한 복약 일지가 동기화되었습니다.")
-        st.session_state.points += 100
-        st.toast("복약 체크 완료! +100p 🐾")
-
-# --- 탭 6: 🏥 기저질환 & 메디컬 프로필 세이프가드 ---
-with tab6:
-    st.header("🏥 메디컬 프로필 & 증상 모니터링 세이프가드")
-    dis_input = st.text_area("📋 기저 질환 기록", value=st.session_state.medical_profile["diseases"])
-    med_input = st.text_area("💊 복용 중인 처방약/영양제 기록", value=st.session_state.medical_profile["current_meds"])
-    
-    st.session_state.medical_profile["diseases"] = dis_input
-    st.session_state.medical_profile["current_meds"] = med_input
-    
-    st.markdown("---")
-    symptom_input = st.text_input("❗ 오늘 평소와 다른 특이 증상이 있으신가요?")
-    if st.button("🩺 신체 위험도 스캐닝"):
-        if symptom_input:
-            with st.spinner("증상 분석 중..."):
-                model = genai.GenerativeModel('models/gemini-3.1-flash-lite')
-                response = model.generate_content(f"증상: '{symptom_input}'. 응급상황 유무와 대처법을 조언하되 위험시 응급실 유도 문구를 명시해줘.")
-                st.markdown(response.text)
-
-# --- 탭 7: 🛍️ 펫샵 (Pet Shop) ---
-with tab7:
-    st.header("🛍️ 피트펫 상점")
-    shop_cat = st.radio("상점 카테고리 선택", ["🐱 고양이 룸 에셋", "🐶 강아지 룸 에셋", "🐼 레서판다 에셋 룸", "🦦 수달 에셋 룸"])
-    
-    if shop_cat == "🐱 고양이 룸 에셋":
-        items_to_display = {"기본 고양이": 0, "🕶️ 힙스터 선글라스 (고양이)": 100, "👑 명품 골드 왕관 (고양이)": 200, "🤖 하이닉스 유니폼 (고양이)": 300}
-    elif shop_cat == "🐶 강아지 룸 에셋":
-        items_to_display = {"기본 강아지": 100, "🕶️ 힙스터 강아지": 150, "👑 왕관 강아지": 220, "🤖 하이닉스 강아지": 320}
-    elif shop_cat == "🐼 레서판다 에셋 룸":
-        items_to_display = {"기본 레서판다": 100, "🎋 대나무 레서판다": 180, "🕶️ 선글라스 래서판다": 230, "🐾 위협하는 래서판다": 330}
-    elif shop_cat == "🦦 수달 에셋 룸":
-        items_to_display = {"기본 수달": 100, "🏊 수영하는 수달": 180, "🐚 조개 먹는 수달": 250, "🐟 사냥하는 수달": 350}
-        
-    col1, col2, col3, col4 = st.columns(4)
-    cols = [col1, col2, col3, col4]
-    
-    for idx, (item_name, price) in enumerate(items_to_display.items()):
-        with cols[idx % 4]:
-            st.markdown(f"**{item_name}**")
-            st.write(f"💰 {price} p")
-            if item_name in st.session_state.inventory:
-                if st.session_state.equipped == item_name:
-                    st.button("🟢 장착 중", key=f"shop_eq_{item_name}", disabled=True)
-                else:
-                    if st.button("🔄 장착", key=f"shop_eq_{item_name}"):
-                        st.session_state.equipped = item_name
-                        st.rerun()
-            else:
-                if st.button("🛒 구매", key=f"shop_buy_{item_name}"):
-                    if st.session_state.points >= price:
-                        st.session_state.points -= price
-                        st.session_state.inventory.append(item_name)
-                        st.session_state.equipped = item_name
-                        st.success(f"🎉 구매 완료!")
-                        st.rerun()
-                    else:
-                        st.error("포인트 부족!")
+                    workout_prompt = f"운동: {final_workout} ({workout_time}분), 질환: {st.session_state.medical_profile['diseases']}. 주의사항과 소
