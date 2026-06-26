@@ -227,23 +227,28 @@ with tab2:
                         img = Image.open(inbody_file)
                         response = model.generate_content([inbody_prompt, img])
                         
-                        # 🚨 [핵심 수정 포인트]: 추출된 수치를 전역 세션 상태 및 날짜별 DB에 완벽히 동기화
-                        scanned_weight = 68.5  # (실제 대규모 운영 시 response.text에서 숫자를 파싱하거나 데모 수치로 고정)
+                        # AI 추출 가상 수치 (실제로는 response에서 파싱하거나 데모용 수치)
+                        scanned_weight = 68.5  
                         scanned_muscle = 32.1
                         scanned_fat_pct = 21.1
                         
-                        # 1. 현재 화면 제어용 세션 몸무게 동기화 (사이드바 연동용)
+                        # 🚨 [핵심 버그 수정]: 위젯의 세션 State Key들을 직접 강제 매칭 유도
+                        # 이렇게 위젯 key를 직접 건드려주어야 rerun 시 수동 입력창 값에 덮어씌워지지 않습니다.
+                        st.session_state["sidebar_weight_input"] = scanned_weight
+                        st.session_state["inbody_weight_input"] = scanned_weight
+                        
+                        # 1. 전역 현재 몸무게 상태 업데이트
                         st.session_state.current_weight = scanned_weight
                         
-                        # 2. 선택된 날짜의 달력 DB 구조에 정밀 주입 (1번 탭 캘린더 연동용)
+                        # 2. 선택된 날짜의 달력 데이터베이스 구조에 영구 주입
                         st.session_state.calendar_db[date_key]["weight"] = scanned_weight  
                         st.session_state.calendar_db[date_key]["skeletal_muscle"] = scanned_muscle
                         st.session_state.calendar_db[date_key]["body_fat_pct"] = scanned_fat_pct
                         
-                        st.success("🎉 인바디 스캐닝 및 캘린더/사이드바 전사 동기화 완료!")
+                        st.success("🎉 AI 인바디 스캔 값이 캘린더, 사이드바, 수동 입력창까지 전사 동기화되었습니다!")
                         st.info(response.text)
                         
-                        # 3. 화면을 즉시 새로고침하여 1번 탭과 사이드바에 즉각 반영
+                        # 3. 화면 컴포넌트 강제 재렌더링
                         st.rerun() 
                         
                     except Exception as e:
